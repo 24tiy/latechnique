@@ -190,7 +190,7 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     specLightRef.current = spec;
 
     /* ━━ CLOUDS ━━ */
-    const cloudTextures: THREE.CanvasTexture[] = [];
+    const cloudTextures: any[] = [];
     for (let v = 0; v < 3; v++) {
       cloudTextures.push(new THREE.CanvasTexture(buildCloudCanvas(v)));
     }
@@ -366,7 +366,7 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     const _v2 = new THREE.Vector3();
     const _v3 = new THREE.Vector3();
 
-    function headerWorldY(cam: THREE.PerspectiveCamera): number {
+    function headerWorldY(cam: any): number {
       const ndcY = 1 - 2 * (36 / window.innerHeight);
       _v1.set(0, ndcY, -1).unproject(cam);
       _v2.set(0, ndcY, 1).unproject(cam);
