@@ -8,7 +8,7 @@ const GlassScene = dynamic(() => import('./GlassScene'), {
   ssr: false,
   loading: () => (
     <div className="glass-loader">
-      <span>Loading 3D…</span>
+      <span>Загрузка 3D…</span>
     </div>
   ),
 });
@@ -58,11 +58,11 @@ export const Hero: React.FC = () => {
         <div className="hero-overlay">
           <div className="hero-sub" ref={subRef} style={{ opacity: 0 }}>
             <p className="hero-subtitle">
-              Analyze social media posts from 6 platforms
+              Анализ статистики постов из 6 социальных платформ
             </p>
             <div className="hero-cta">
               <Button variant="primary" size="lg" href="/register">
-                Get started
+                Начать бесплатно
               </Button>
             </div>
           </div>
@@ -72,7 +72,7 @@ export const Hero: React.FC = () => {
           <div className="hero-scroll-track">
             <div className="hero-scroll-dot" />
           </div>
-          <span className="hero-scroll-label">Scroll</span>
+          <span className="hero-scroll-label">Листайте</span>
         </div>
       </div>
     </section>
