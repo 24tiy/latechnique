@@ -15,6 +15,59 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
   return t * t * (3 - 2 * t);
 }
 
+/* ═══════════════════════════════════════════════════════
+   CUSTOM SHADERS
+   ═══════════════════════════════════════════════════════ */
+
+/**
+ * Chromatic Aberration + Vignette
+ *
+ * Simulates light dispersion through glass — different
+ * wavelengths (R/G/B) refract at slightly different angles,
+ * creating subtle rainbow fringing on bright edges.
+ * Combined with a soft vignette for cinematic focus.
+ */
+const ChromaVignetteShader = {
+  uniforms: {
+    tDiffuse: { value: null },
+    uChroma: { value: 0.004 },
+    uVignette: { value: 0.35 },
+  },
+  vertexShader: /* glsl */ `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse;
+    uniform float uChroma;
+    uniform float uVignette;
+    varying vec2 vUv;
+
+    void main() {
+      vec2 center = vUv - 0.5;
+      float dist = length(center);
+
+      // Chromatic aberration — stronger toward edges
+      vec2 offset = center * dist * uChroma;
+      float r = texture2D(tDiffuse, vUv + offset).r;
+      float g = texture2D(tDiffuse, vUv).g;
+      float b = texture2D(tDiffuse, vUv - offset).b;
+
+      // Vignette — subtle darkening at corners
+      float vig = 1.0 - dist * dist * uVignette;
+      vig = clamp(vig, 0.0, 1.0);
+      vig = smoothstep(0.0, 1.0, vig);
+
+      gl_FragColor = vec4(vec3(r, g, b) * vig, 1.0);
+    }
+  `,
+};
+
+/* ═══════════════════════════════════════════════════════ */
+
 const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<any>(null);
@@ -26,6 +79,7 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
   const mouseRef = useRef({ x: 0, y: 0 });
   const scrollRef = useRef(0);
   const smoothScrollRef = useRef(0);
+  const lookAtYRef = useRef(0);
 
   const initScene = useCallback(async () => {
     if (!canvasRef.current) return;
@@ -46,6 +100,9 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     const { UnrealBloomPass } = await import(
       'three/examples/jsm/postprocessing/UnrealBloomPass.js'
     );
+    const { ShaderPass } = await import(
+      'three/examples/jsm/postprocessing/ShaderPass.js'
+    );
 
     const canvas = canvasRef.current;
     const mobile = window.innerWidth < 768;
@@ -64,7 +121,7 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     renderer.setPixelRatio(dpr);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.2;
+    renderer.toneMappingExposure = 1.25;
     rendererRef.current = renderer;
 
     /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -84,7 +141,11 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
 
     /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
        HDR-QUALITY ENVIRONMENT MAP
-       Rich contrast = beautiful glass reflections
+
+       Glass looks as good as its environment.
+       A flat gradient → flat glass.
+       Rich contrast with warm/cool interplay
+       → alive, sparkling glass.
        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
     const skyCanvas = buildHDRSkyTexture();
     const skyTex = new THREE.CanvasTexture(skyCanvas);
@@ -100,102 +161,116 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     pmrem.dispose();
 
     /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       LIGHTING — dramatic for glass
-       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-    scene.add(new THREE.AmbientLight(0xd8d0e8, 0.3));
+       LIGHTING — 8-light cinematic rig
 
-    // Key light — warm, high, right
-    const key = new THREE.DirectionalLight(0xfff4e8, 2.2);
-    key.position.set(6, 10, 5);
+       Glass needs LOTS of light sources to create
+       the complex specular highlights that make it
+       look real. Each light creates a unique reflection
+       on different faces of the 3D text.
+       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    scene.add(new THREE.AmbientLight(0xd8d0e8, 0.25));
+
+    // Key — warm, high right (main shadow caster)
+    const key = new THREE.DirectionalLight(0xfff4e0, 2.5);
+    key.position.set(7, 12, 5);
     scene.add(key);
 
-    // Fill — cool, left
-    const fill = new THREE.DirectionalLight(0xc8d8ff, 0.6);
-    fill.position.set(-6, 3, 4);
+    // Fill — cool, left (softens shadows)
+    const fill = new THREE.DirectionalLight(0xc0d0ff, 0.7);
+    fill.position.set(-7, 3, 5);
     scene.add(fill);
 
-    // Rim — purple back light for glass edge glow
-    const rim = new THREE.DirectionalLight(0xd8c0ff, 1.5);
-    rim.position.set(0, 5, -8);
+    // Rim — purple, behind (edge glow)
+    const rim = new THREE.DirectionalLight(0xd0b8ff, 1.8);
+    rim.position.set(0, 6, -10);
     scene.add(rim);
 
-    // Bottom warm bounce
-    const bounce = new THREE.DirectionalLight(0xffe0c0, 0.5);
-    bounce.position.set(0, -5, 3);
+    // Bounce — warm from below (ground reflection sim)
+    const bounce = new THREE.DirectionalLight(0xffd8b0, 0.5);
+    bounce.position.set(0, -6, 4);
     scene.add(bounce);
 
-    // Specular highlight — follows mouse
-    const spec = new THREE.PointLight(0xffffff, 40, 35);
+    // Kicker — side accent
+    const kicker = new THREE.DirectionalLight(0xffe0f0, 0.8);
+    kicker.position.set(-8, 8, -3);
+    scene.add(kicker);
+
+    // Mouse-tracking specular highlight
+    const spec = new THREE.PointLight(0xffffff, 50, 40);
     spec.position.set(3, 5, 8);
     scene.add(spec);
     specLightRef.current = spec;
 
-    // Extra sparkle lights for glass
-    const sparkle1 = new THREE.PointLight(0xd0c0ff, 15, 20);
-    sparkle1.position.set(-5, 3, 3);
-    scene.add(sparkle1);
+    // Sparkle points — catch different glass facets
+    const sp1 = new THREE.PointLight(0xc8b8ff, 18, 22);
+    sp1.position.set(-5, 4, 4);
+    scene.add(sp1);
 
-    const sparkle2 = new THREE.PointLight(0xffe8d0, 12, 18);
-    sparkle2.position.set(4, -2, 5);
-    scene.add(sparkle2);
+    const sp2 = new THREE.PointLight(0xffe0c8, 14, 20);
+    sp2.position.set(5, -2, 6);
+    scene.add(sp2);
 
     /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       GLASS MATERIAL — premium refractive glass
+       GLASS MATERIAL — crystal clear, see-through
 
-       Key principles:
-       - transmission 0.92: not fully transparent, so
-         refraction distortion is visible
-       - ior 1.55: higher = more visible light bending
-       - thickness 0.8: increases refraction effect
-       - envMapIntensity 5.0: strong environment reflections
-       - attenuationColor: light gets tinted going through
-       - clearcoat: second reflective surface layer
+       The balance: you must see BOTH the background
+       through the glass AND reflections on its surface.
+
+       Key: transmission high, envMapIntensity moderate.
+       If envMap is too strong, reflections overpower
+       the see-through effect. If too weak, it looks
+       like clear plastic instead of glass.
        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
     const glass = new THREE.MeshPhysicalMaterial({
-      transmission: 0.92,
-      roughness: 0.05,
+      // TRANSMISSION: see-through + refraction
+      transmission: 0.95,
+      roughness: 0.02,
       metalness: 0.0,
-      ior: 1.55,
-      thickness: 0.8,
+      ior: 1.52,         // standard glass
+      thickness: 0.5,     // moderate refraction depth
 
-      envMapIntensity: 5.0,
+      // REFLECTIONS: enough to see environment, not so much to block view
+      envMapIntensity: 3.0,
 
+      // SPECULAR: bright highlights on edges
       specularIntensity: 1.5,
       specularColor: new THREE.Color(0xffffff),
 
+      // CLEARCOAT: second reflection layer (like polished glass surface)
       clearcoat: 1.0,
-      clearcoatRoughness: 0.0,
+      clearcoatRoughness: 0.01,
 
-      // Subtle lavender tint = premium crystal feel
-      attenuationColor: new THREE.Color('#e0d8f8'),
-      attenuationDistance: 5.0,
+      // ATTENUATION: light gets subtly tinted passing through
+      // Faint lavender = premium crystal feel
+      attenuationColor: new THREE.Color('#e8e0fa'),
+      attenuationDistance: 10.0,
 
       color: new THREE.Color(0xffffff),
       side: THREE.FrontSide,
     });
 
     /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       3D TEXT
+       3D TEXT — high polygon count for smooth curves
        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
     const fontLoader = new FontLoader();
     fontLoader.load(
       'https://cdn.jsdelivr.net/npm/three@0.164.0/examples/fonts/helvetiker_bold.typeface.json',
       (font: any) => {
         const sz = mobile ? 0.85 : 1.35;
-        const depth = mobile ? 0.4 : 0.65;
-        const segs = mobile ? 10 : 20;
-        const bSegs = mobile ? 4 : 8;
+        const depth = mobile ? 0.45 : 0.7;
+        const curveSegs = mobile ? 12 : 24;   // smoother curves
+        const bevelSegs = mobile ? 4 : 10;     // smoother bevels
 
         const geo = new TextGeometry('LaTechNique', {
           font,
           size: sz,
           height: depth,
-          curveSegments: segs,
+          curveSegments: curveSegs,
           bevelEnabled: true,
-          bevelThickness: 0.12,
-          bevelSize: 0.06,
+          bevelThickness: 0.14,
+          bevelSize: 0.07,
           bevelOffset: 0,
-          bevelSegments: bSegs,
+          bevelSegments: bevelSegs,
         });
 
         geo.computeBoundingBox();
@@ -216,33 +291,69 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     );
 
     /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       POST-PROCESSING — Bloom
+       POST-PROCESSING PIPELINE
 
-       Makes specular highlights on glass edges
-       glow softly. The difference between "ok" glass
-       and "premium crystal" look.
+       1. RenderPass     — base scene with glass
+       2. UnrealBloom     — soft glow on specular highlights
+       3. ChromaVignette  — chromatic aberration + vignette
+
+       This pipeline turns "decent 3D" into "cinematic".
        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
     const composer = new EffectComposer(renderer);
+
+    // Pass 1: render scene
     composer.addPass(new RenderPass(scene, camera));
 
-    const bloomPass = new UnrealBloomPass(
+    // Pass 2: bloom — soft glow on glass highlights
+    const bloom = new UnrealBloomPass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),
-      0.35,  // strength — subtle glow
-      0.6,   // radius — soft spread
-      0.7    // threshold — only bright spots bloom
+      0.3,    // strength — subtle, elegant
+      0.5,    // radius — soft spread
+      0.75    // threshold — only bright highlights
     );
-    composer.addPass(bloomPass);
+    composer.addPass(bloom);
+
+    // Pass 3: chromatic aberration + vignette
+    const chromaPass = new ShaderPass(ChromaVignetteShader);
+    chromaPass.uniforms.uChroma.value = mobile ? 0.002 : 0.004;
+    chromaPass.uniforms.uVignette.value = 0.3;
+    composer.addPass(chromaPass);
+
     composerRef.current = composer;
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       HELPER: screen-to-world projection
+
+       Given a screen Y position (in NDC), compute
+       the corresponding world Y at z=0 plane.
+       Used to position the text exactly at header center.
+       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    const _v1 = new THREE.Vector3();
+    const _v2 = new THREE.Vector3();
+    const _v3 = new THREE.Vector3();
+
+    function getWorldYAtScreen(cam: THREE.PerspectiveCamera, ndcY: number): number {
+      // Near plane point
+      _v1.set(0, ndcY, -1).unproject(cam);
+      // Far plane point
+      _v2.set(0, ndcY, 1).unproject(cam);
+      // Ray direction
+      _v3.subVectors(_v2, _v1).normalize();
+      // Intersect z=0 plane
+      const t = -_v1.z / _v3.z;
+      return _v1.y + _v3.y * t;
+    }
 
     /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
        ANIMATION LOOP
        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
     const LERP_SPEED = 0.05;
+    const ANIM_END = 0.65; // Animation completes at 65% scroll (subtitle appears at 65%)
 
     function animate() {
       frameRef.current = requestAnimationFrame(animate);
 
-      // Single smoothed scroll drives everything
+      // ── Smooth scroll ──
       smoothScrollRef.current = lerp(
         smoothScrollRef.current,
         scrollRef.current,
@@ -250,52 +361,71 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
       );
       const s = smoothScrollRef.current;
 
-      // Camera
-      camera.position.z = lerp(camera.position.z, 20 - s * 5, LERP_SPEED);
-      camera.position.y = lerp(camera.position.y, 0.3 + s * 3.5, LERP_SPEED);
-      camera.lookAt(0, s * 3.5, 0);
+      // ── Animation timeline ──
+      // 0 → ANIM_END: text rotates, shrinks, rises
+      // ANIM_END → 1: text holds position in header
+      const animT = Math.min(1, s / ANIM_END);
+      const eased = smoothstep(0, 1, animT);
+
+      // ── Camera ──
+      const targetCamZ = 20 - s * 5;
+      const targetCamY = 0.3 + s * 3.5;
+      const targetLookY = s * 3.5;
+
+      camera.position.z = lerp(camera.position.z, targetCamZ, LERP_SPEED);
+      camera.position.y = lerp(camera.position.y, targetCamY, LERP_SPEED);
+      lookAtYRef.current = lerp(lookAtYRef.current, targetLookY, LERP_SPEED);
+      camera.lookAt(0, lookAtYRef.current, 0);
 
       if (textGroupRef.current) {
         const group = textGroupRef.current;
 
-        // ROTATION: exactly 2 turns with smooth ease
-        const rotEased = smoothstep(0, 1, s);
-        group.rotation.y = rotEased * Math.PI * 4;
+        // ── ROTATION: exactly 2 full turns ──
+        group.rotation.y = eased * Math.PI * 4;
 
-        // Subtle X tilt during spin
-        group.rotation.x = Math.sin(s * Math.PI) * 0.08;
+        // Subtle X tilt during rotation (peaks at midpoint)
+        group.rotation.x = Math.sin(animT * Math.PI) * 0.1;
 
-        // SCALE: 1 → 0.18
-        const targetScale = Math.max(0.18, 1 - s * 0.82);
-        group.scale.setScalar(lerp(group.scale.x, targetScale, LERP_SPEED));
+        // ── SCALE: 1 → 0.18 ──
+        group.scale.setScalar(Math.max(0.18, 1 - eased * 0.82));
 
-        // POSITION: rise to header
-        group.position.y = lerp(group.position.y, s * 6.2, LERP_SPEED);
+        // ── POSITION: rise to header center ──
+        // Dynamically compute where the header center is in 3D space
+        camera.updateMatrixWorld();
+        const headerNdcY = 1 - 2 * (36 / window.innerHeight); // 36px = center of 72px header
+        const headerWorldY = getWorldYAtScreen(camera, headerNdcY);
+
+        // Interpolate from center (0) to header position
+        group.position.y = lerp(0, headerWorldY, eased);
       }
 
-      // Mouse → specular light
+      // ── Mouse → specular light ──
       if (specLightRef.current) {
         specLightRef.current.position.x = lerp(
           specLightRef.current.position.x,
-          3 + mouseRef.current.x * 4,
-          0.035
+          3 + mouseRef.current.x * 5,
+          0.03
         );
         specLightRef.current.position.y = lerp(
           specLightRef.current.position.y,
           5 + mouseRef.current.y * 3,
-          0.035
+          0.03
         );
       }
 
-      // Render through bloom pipeline
+      // ── Render through post-processing pipeline ──
       composer.render();
     }
 
     animate();
   }, []);
 
-  useEffect(() => { scrollRef.current = scrollProgress; }, [scrollProgress]);
+  /* ── Sync scroll prop → ref ── */
+  useEffect(() => {
+    scrollRef.current = scrollProgress;
+  }, [scrollProgress]);
 
+  /* ── Mouse tracking ── */
   useEffect(() => {
     const fn = (e: MouseEvent) => {
       mouseRef.current.x = (e.clientX / window.innerWidth - 0.5) * 2;
@@ -305,6 +435,7 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     return () => window.removeEventListener('mousemove', fn);
   }, []);
 
+  /* ── Resize handler ── */
   useEffect(() => {
     const fn = () => {
       if (!rendererRef.current || !cameraRef.current || !composerRef.current) return;
@@ -319,25 +450,34 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     return () => window.removeEventListener('resize', fn);
   }, []);
 
+  /* ── Init & Cleanup ── */
   useEffect(() => {
     initScene();
     return () => {
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
       rendererRef.current?.dispose();
-      composerRef.current?.dispose?.();
     };
   }, [initScene]);
 
   return <canvas ref={canvasRef} className="glass-canvas" />;
 };
 
-/* ═══════════════════════════════════════════════════════
-   HDR-QUALITY SKY TEXTURE
+/* ═══════════════════════════════════════════════════════════
+   HDR-QUALITY ENVIRONMENT TEXTURE
 
-   The environment map is THE key to good glass.
-   Rich contrast and color variety create interesting
-   reflections and refractions through the material.
-   ═══════════════════════════════════════════════════════ */
+   THE most important factor for glass quality.
+
+   Real glass is a mirror + lens: it reflects and refracts
+   whatever surrounds it. A boring environment = boring glass.
+   A rich, contrasty, colorful environment = glass that
+   sparkles, refracts rainbows, and feels alive.
+
+   This creates a sunset sky with:
+   - Deep purple zenith → warm peach horizon → amber ground
+   - Structured cloud layers at different altitudes
+   - Warm sun glow for directional light
+   - Cool/warm contrast for color variety in reflections
+   ═══════════════════════════════════════════════════════════ */
 function buildHDRSkyTexture(): HTMLCanvasElement {
   const w = 2048;
   const h = 1024;
@@ -346,105 +486,133 @@ function buildHDRSkyTexture(): HTMLCanvasElement {
   c.height = h;
   const ctx = c.getContext('2d')!;
 
-  // Base: deep purple → lavender → peach → warm gold
+  /* ── Base gradient: purple → peach → amber ── */
   const sky = ctx.createLinearGradient(0, 0, 0, h);
-  sky.addColorStop(0.0,  '#4A3D8F');
-  sky.addColorStop(0.08, '#6355A4');
-  sky.addColorStop(0.18, '#8272B8');
-  sky.addColorStop(0.28, '#A898CC');
-  sky.addColorStop(0.38, '#C4B4D8');
-  sky.addColorStop(0.46, '#D8C8D8');
-  sky.addColorStop(0.52, '#E4D4C8');
-  sky.addColorStop(0.58, '#ECDCC0');
-  sky.addColorStop(0.65, '#F2D0A8');
-  sky.addColorStop(0.75, '#E8B880');
-  sky.addColorStop(0.85, '#D8A068');
-  sky.addColorStop(0.95, '#C88850');
-  sky.addColorStop(1.0,  '#B87840');
+  sky.addColorStop(0.0,  '#3D3280');
+  sky.addColorStop(0.06, '#4E4298');
+  sky.addColorStop(0.14, '#6858AE');
+  sky.addColorStop(0.22, '#8874C0');
+  sky.addColorStop(0.30, '#A694D0');
+  sky.addColorStop(0.38, '#C0B0D8');
+  sky.addColorStop(0.44, '#D4C4D4');
+  sky.addColorStop(0.50, '#E2D2C6');
+  sky.addColorStop(0.56, '#ECDCB8');
+  sky.addColorStop(0.62, '#F2D0A0');
+  sky.addColorStop(0.70, '#ECC088');
+  sky.addColorStop(0.78, '#E0AC70');
+  sky.addColorStop(0.86, '#D49858');
+  sky.addColorStop(0.94, '#C48848');
+  sky.addColorStop(1.0,  '#B07838');
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, w, h);
 
-  // Warm horizon band
-  const horizon = ctx.createLinearGradient(0, h * 0.42, 0, h * 0.62);
-  horizon.addColorStop(0, 'rgba(255,200,150,0)');
-  horizon.addColorStop(0.3, 'rgba(255,210,170,0.15)');
-  horizon.addColorStop(0.5, 'rgba(255,195,145,0.2)');
-  horizon.addColorStop(0.7, 'rgba(255,210,170,0.15)');
-  horizon.addColorStop(1, 'rgba(255,200,150,0)');
+  /* ── Warm horizon glow band ── */
+  const horizon = ctx.createLinearGradient(0, h * 0.40, 0, h * 0.64);
+  horizon.addColorStop(0.0, 'rgba(255,210,160,0)');
+  horizon.addColorStop(0.25, 'rgba(255,215,175,0.12)');
+  horizon.addColorStop(0.50, 'rgba(255,200,150,0.18)');
+  horizon.addColorStop(0.75, 'rgba(255,215,175,0.12)');
+  horizon.addColorStop(1.0, 'rgba(255,210,160,0)');
   ctx.fillStyle = horizon;
   ctx.fillRect(0, 0, w, h);
 
-  // Subtle off-center sun glow
+  /* ── Sun glow (off-center for asymmetric reflections) ── */
   ctx.globalCompositeOperation = 'screen';
   const sun = ctx.createRadialGradient(
-    w * 0.35, h * 0.50, 0,
-    w * 0.35, h * 0.50, w * 0.25
+    w * 0.3, h * 0.50, 0,
+    w * 0.3, h * 0.50, w * 0.22
   );
-  sun.addColorStop(0, 'rgba(255,230,200,0.18)');
-  sun.addColorStop(0.3, 'rgba(255,215,175,0.10)');
-  sun.addColorStop(0.7, 'rgba(255,200,160,0.03)');
-  sun.addColorStop(1, 'rgba(255,200,150,0)');
+  sun.addColorStop(0.0, 'rgba(255,235,210,0.20)');
+  sun.addColorStop(0.2, 'rgba(255,220,185,0.12)');
+  sun.addColorStop(0.5, 'rgba(255,205,165,0.05)');
+  sun.addColorStop(1.0, 'rgba(255,200,150,0)');
   ctx.fillStyle = sun;
   ctx.fillRect(0, 0, w, h);
 
-  // Cloud layers — tinted, NOT white
-  const seeds = [
+  /* ── Secondary glow on opposite side (fill light) ── */
+  const fill = ctx.createRadialGradient(
+    w * 0.75, h * 0.45, 0,
+    w * 0.75, h * 0.45, w * 0.18
+  );
+  fill.addColorStop(0.0, 'rgba(200,190,240,0.10)');
+  fill.addColorStop(0.5, 'rgba(190,180,230,0.04)');
+  fill.addColorStop(1.0, 'rgba(180,170,220,0)');
+  ctx.fillStyle = fill;
+  ctx.fillRect(0, 0, w, h);
+
+  /* ── Cloud layers (tinted, never white) ── */
+  const S = [
     0.12, 0.34, 0.56, 0.78, 0.91, 0.23, 0.45, 0.67, 0.89, 0.01,
     0.38, 0.72, 0.15, 0.58, 0.93, 0.27, 0.61, 0.84, 0.49, 0.06,
     0.33, 0.77, 0.19, 0.52, 0.88, 0.41, 0.66, 0.03, 0.75, 0.29,
     0.55, 0.82, 0.11, 0.47, 0.69, 0.95, 0.36, 0.63, 0.08, 0.71,
   ];
 
-  // Layer 1: Large atmospheric haze
-  for (let i = 0; i < 15; i++) {
-    const cx = seeds[i % 40] * w;
-    const cy = h * 0.15 + seeds[(i + 7) % 40] * h * 0.45;
-    const rx = 200 + seeds[(i + 3) % 40] * 500;
-    const ry = 40 + seeds[(i + 11) % 40] * 100;
-    const a = 0.04 + seeds[(i + 5) % 40] * 0.08;
-
+  // High altitude: large, faint, lavender
+  for (let i = 0; i < 12; i++) {
+    const cx = S[i % 40] * w;
+    const cy = h * 0.08 + S[(i + 7) % 40] * h * 0.35;
+    const rx = 250 + S[(i + 3) % 40] * 500;
+    const ry = 50 + S[(i + 11) % 40] * 120;
+    const a = 0.035 + S[(i + 5) % 40] * 0.07;
     const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry));
-    cg.addColorStop(0, `rgba(220,215,235,${a})`);
-    cg.addColorStop(0.5, `rgba(215,210,230,${a * 0.4})`);
-    cg.addColorStop(1, 'rgba(210,205,225,0)');
+    cg.addColorStop(0.0, `rgba(210,205,235,${a})`);
+    cg.addColorStop(0.5, `rgba(205,200,230,${a * 0.35})`);
+    cg.addColorStop(1.0, 'rgba(200,195,225,0)');
     ctx.fillStyle = cg;
     ctx.beginPath();
-    ctx.ellipse(cx, cy, rx, ry, seeds[(i + 2) % 40] * 0.3, 0, Math.PI * 2);
+    ctx.ellipse(cx, cy, rx, ry, S[(i + 2) % 40] * 0.4, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // Layer 2: Smaller, brighter patches (contrast for refraction)
-  for (let i = 15; i < 40; i++) {
-    const cx = seeds[i % 40] * w;
-    const cy = h * 0.10 + seeds[(i + 3) % 40] * h * 0.50;
-    const rx = 50 + seeds[(i + 7) % 40] * 180;
-    const ry = 15 + seeds[(i + 11) % 40] * 50;
-    const a = 0.03 + seeds[(i + 9) % 40] * 0.06;
-
+  // Mid altitude: medium, warmer tint
+  for (let i = 12; i < 28; i++) {
+    const cx = S[i % 40] * w;
+    const cy = h * 0.20 + S[(i + 3) % 40] * h * 0.35;
+    const rx = 80 + S[(i + 7) % 40] * 250;
+    const ry = 20 + S[(i + 11) % 40] * 65;
+    const a = 0.03 + S[(i + 9) % 40] * 0.06;
     const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry));
-    cg.addColorStop(0, `rgba(235,230,245,${a})`);
-    cg.addColorStop(0.6, `rgba(225,220,240,${a * 0.3})`);
-    cg.addColorStop(1, 'rgba(220,215,235,0)');
+    cg.addColorStop(0.0, `rgba(225,218,238,${a})`);
+    cg.addColorStop(0.5, `rgba(220,215,235,${a * 0.3})`);
+    cg.addColorStop(1.0, 'rgba(215,210,230,0)');
     ctx.fillStyle = cg;
     ctx.beginPath();
     ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // Depth at top
-  ctx.globalCompositeOperation = 'multiply';
-  const depth = ctx.createLinearGradient(0, 0, 0, h * 0.3);
-  depth.addColorStop(0, 'rgba(70,55,130,0.15)');
-  depth.addColorStop(1, 'rgba(100,80,150,0)');
-  ctx.fillStyle = depth;
-  ctx.fillRect(0, 0, w, h * 0.3);
+  // Low altitude: small, warm tinted (near horizon)
+  for (let i = 28; i < 40; i++) {
+    const cx = S[i % 40] * w;
+    const cy = h * 0.38 + S[(i + 5) % 40] * h * 0.18;
+    const rx = 60 + S[(i + 7) % 40] * 180;
+    const ry = 12 + S[(i + 11) % 40] * 35;
+    const a = 0.025 + S[(i + 1) % 40] * 0.04;
+    const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry));
+    cg.addColorStop(0.0, `rgba(240,230,225,${a})`);
+    cg.addColorStop(0.6, `rgba(235,225,220,${a * 0.25})`);
+    cg.addColorStop(1.0, 'rgba(230,220,215,0)');
+    ctx.fillStyle = cg;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
-  // Warm ground bounce
+  /* ── Deepen the zenith (more contrast = better reflections) ── */
+  ctx.globalCompositeOperation = 'multiply';
+  const zenith = ctx.createLinearGradient(0, 0, 0, h * 0.25);
+  zenith.addColorStop(0.0, 'rgba(55,40,110,0.20)');
+  zenith.addColorStop(1.0, 'rgba(80,65,130,0)');
+  ctx.fillStyle = zenith;
+  ctx.fillRect(0, 0, w, h * 0.25);
+
+  /* ── Warm ground bounce ── */
   ctx.globalCompositeOperation = 'screen';
-  const ground = ctx.createLinearGradient(0, h * 0.75, 0, h);
-  ground.addColorStop(0, 'rgba(200,160,100,0)');
-  ground.addColorStop(0.5, 'rgba(200,160,100,0.06)');
-  ground.addColorStop(1, 'rgba(180,140,80,0.1)');
+  const ground = ctx.createLinearGradient(0, h * 0.80, 0, h);
+  ground.addColorStop(0.0, 'rgba(200,155,90,0)');
+  ground.addColorStop(0.5, 'rgba(195,150,85,0.06)');
+  ground.addColorStop(1.0, 'rgba(185,140,75,0.10)');
   ctx.fillStyle = ground;
   ctx.fillRect(0, 0, w, h);
 
