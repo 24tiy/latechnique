@@ -1,72 +1,80 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { Button } from './Button';
-import { cn } from '@/lib/utils';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import dynamic from 'next/dynamic';
+import { Button } from '../design-system/Button';
 
-export const Header: React.FC = () => {
-  const [scrolled, setScrolled] = useState(false);
+const GlassScene = dynamic(() => import('./GlassScene'), {
+  ssr: false,
+  loading: () => (
+    <div className="glass-loader">
+      <span>Loading 3D…</span>
+    </div>
+  ),
+});
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
+export const Hero: React.FC = () => {
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const subRef = useRef<HTMLDivElement>(null);
+  const hintRef = useRef<HTMLDivElement>(null);
+  const [scrollProgress, setScrollProgress] = useState(0);
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+  const handleScroll = useCallback(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+
+    const rect = section.getBoundingClientRect();
+    const total = section.offsetHeight - window.innerHeight;
+    if (total <= 0) return;
+
+    const raw = -rect.top / total;
+    const progress = Math.max(0, Math.min(1, raw));
+    setScrollProgress(progress);
+
+    // Subtitle appears at ~70% scroll
+    if (subRef.current) {
+      const subT = Math.max(0, (progress - 0.65) / 0.35);
+      subRef.current.style.opacity = String(subT);
+      subRef.current.style.transform = `translateY(${16 * (1 - subT)}px)`;
+    }
+
+    // Scroll hint fades out quickly
+    if (hintRef.current) {
+      hintRef.current.style.opacity = String(Math.max(0, 1 - progress * 6));
+    }
   }, []);
 
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
+
   return (
-    <header
-      className={cn(
-        'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
-        scrolled
-          ? 'bg-white/80 backdrop-blur-md border-b border-black/10'
-          : 'bg-transparent'
-      )}
-      style={{ height: 'var(--header-height)' }}
-    >
-      <div className="container h-full">
-        <div className="flex items-center justify-between h-full">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <span className="text-xl font-bold tracking-tight">LaTechnique</span>
-          </Link>
+    <section ref={sectionRef} className="hero-scroll-section">
+      <div className="hero-sticky">
+        <GlassScene scrollProgress={scrollProgress} />
 
-          {/* Navigation */}
-          <nav className="hidden md:flex items-center gap-8">
-            <Link
-              href="#features"
-              className="text-sm font-medium hover:opacity-70 transition-opacity"
-            >
-              Возможности
-            </Link>
-            <Link
-              href="#pricing"
-              className="text-sm font-medium hover:opacity-70 transition-opacity"
-            >
-              Тарифы
-            </Link>
-            <Link
-              href="#how-it-works"
-              className="text-sm font-medium hover:opacity-70 transition-opacity"
-            >
-              Как это работает
-            </Link>
-          </nav>
-
-          {/* CTA Buttons */}
-          <div className="flex items-center gap-3">
-            <Button variant="tertiary" size="sm" href="/login">
-              Войти
-            </Button>
-            <Button variant="primary" size="sm" href="/register">
-              Начать
-            </Button>
+        <div className="hero-overlay">
+          <div className="hero-sub" ref={subRef} style={{ opacity: 0 }}>
+            <p className="hero-subtitle">
+              Analyze social media posts from 6 platforms
+            </p>
+            <div className="hero-cta">
+              <Button variant="primary" size="lg" href="/register">
+                Get started
+              </Button>
+            </div>
           </div>
         </div>
+
+        <div className="hero-scroll-hint" ref={hintRef}>
+          <div className="hero-scroll-track">
+            <div className="hero-scroll-dot" />
+          </div>
+          <span className="hero-scroll-label">Scroll</span>
+        </div>
       </div>
-    </header>
+    </section>
   );
 };
