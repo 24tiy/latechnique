@@ -10,58 +10,83 @@ function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
 
-function smoothstep(edge0: number, edge1: number, x: number): number {
-  const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+function smoothstep(e0: number, e1: number, x: number): number {
+  const t = Math.max(0, Math.min(1, (x - e0) / (e1 - e0)));
   return t * t * (3 - 2 * t);
 }
 
-/* ═══════════════════════════════════════════════════════
-   CUSTOM SHADERS
-   ═══════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════
+   GRASS SHADERS
+   ═══════════════════════════════════════ */
+const GRASS_VS = /* glsl */ `
+  attribute vec3 offset;
+  attribute float angle;
+  attribute float heightScale;
+  attribute float phase;
 
-/**
- * Chromatic Aberration + Vignette
- */
-const ChromaVignetteShader = {
-  uniforms: {
-    tDiffuse: { value: null },
-    uChroma: { value: 0.004 },
-    uVignette: { value: 0.35 },
-  },
-  vertexShader: /* glsl */ `
-    varying vec2 vUv;
-    void main() {
-      vUv = uv;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    }
-  `,
-  fragmentShader: /* glsl */ `
-    uniform sampler2D tDiffuse;
-    uniform float uChroma;
-    uniform float uVignette;
-    varying vec2 vUv;
+  uniform float uTime;
+  uniform float uWindStrength;
 
-    void main() {
-      vec2 center = vUv - 0.5;
-      float dist = length(center);
+  varying float vHeight;
+  varying float vPhase;
+  varying float vFogDepth;
 
-      // Chromatic aberration
-      vec2 offset = center * dist * uChroma;
-      float r = texture2D(tDiffuse, vUv + offset).r;
-      float g = texture2D(tDiffuse, vUv).g;
-      float b = texture2D(tDiffuse, vUv - offset).b;
+  void main() {
+    vec3 pos = position;
+    float h = pos.y;
+    vHeight = h;
+    vPhase = phase;
 
-      // Vignette
-      float vig = 1.0 - dist * dist * uVignette;
-      vig = clamp(vig, 0.0, 1.0);
-      vig = smoothstep(0.0, 1.0, vig);
+    pos.y *= heightScale;
 
-      gl_FragColor = vec4(vec3(r, g, b) * vig, 1.0);
-    }
-  `,
-};
+    float wf = h * h;
+    float w1 = sin(uTime * 1.5 + offset.x * 0.3 + offset.z * 0.4 + phase * 6.283);
+    float w2 = sin(uTime * 2.6 + offset.x * 0.7 + offset.z * 0.5 + phase * 4.0) * 0.35;
+    float w3 = cos(uTime * 0.9 + offset.x * 0.15 + offset.z * 0.25) * 0.25;
 
-/* ═══════════════════════════════════════════════════════ */
+    pos.x += (w1 + w2 + w3) * uWindStrength * wf;
+    pos.z += cos(uTime * 1.1 + offset.z * 0.4 + offset.x * 0.2) * uWindStrength * 0.35 * wf;
+
+    float c = cos(angle);
+    float s = sin(angle);
+    vec3 r = vec3(pos.x * c - pos.z * s, pos.y, pos.x * s + pos.z * c);
+
+    vec4 mvPos = modelViewMatrix * vec4(r + offset, 1.0);
+    vFogDepth = -mvPos.z;
+    gl_Position = projectionMatrix * mvPos;
+  }
+`;
+
+const GRASS_FS = /* glsl */ `
+  uniform vec3 uFogColor;
+  uniform float uFogDensity;
+
+  varying float vHeight;
+  varying float vPhase;
+  varying float vFogDepth;
+
+  void main() {
+    vec3 dark  = vec3(0.04, 0.24, 0.02);
+    vec3 mid   = vec3(0.07, 0.38, 0.05);
+    vec3 light = vec3(0.16, 0.52, 0.10);
+
+    vec3 col = mix(dark, mid, smoothstep(0.0, 0.4, vHeight));
+    col = mix(col, light, smoothstep(0.3, 1.0, vHeight));
+    col += (vPhase - 0.5) * 0.05;
+
+    float ao = smoothstep(0.0, 0.12, vHeight);
+    col *= mix(0.55, 1.0, ao);
+
+    // Distance fog
+    float fogFactor = 1.0 - exp(-uFogDensity * uFogDensity * vFogDepth * vFogDepth);
+    fogFactor = clamp(fogFactor, 0.0, 1.0);
+    col = mix(col, uFogColor, fogFactor);
+
+    gl_FragColor = vec4(col, 1.0);
+  }
+`;
+
+/* ═══════════════════════════════════════ */
 
 const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -70,11 +95,14 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
   const cameraRef = useRef<any>(null);
   const textGroupRef = useRef<any>(null);
   const specLightRef = useRef<any>(null);
+  const grassMatRef = useRef<any>(null);
+  const cloudsRef = useRef<any[]>([]);
   const frameRef = useRef(0);
   const mouseRef = useRef({ x: 0, y: 0 });
   const scrollRef = useRef(0);
   const smoothScrollRef = useRef(0);
-  const lookAtYRef = useRef(0);
+  const clockRef = useRef(0);
+  const lastTimeRef = useRef(0);
 
   const initScene = useCallback(async () => {
     if (!canvasRef.current) return;
@@ -95,17 +123,12 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     const { UnrealBloomPass } = await import(
       'three/examples/jsm/postprocessing/UnrealBloomPass.js'
     );
-    const { ShaderPass } = await import(
-      'three/examples/jsm/postprocessing/ShaderPass.js'
-    );
 
     const canvas = canvasRef.current;
     const mobile = window.innerWidth < 768;
     const dpr = Math.min(window.devicePixelRatio, mobile ? 1.5 : 2);
 
-    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       RENDERER
-       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    /* ━━ RENDERER ━━ */
     const renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
@@ -116,28 +139,25 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     renderer.setPixelRatio(dpr);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.25;
+    renderer.toneMappingExposure = 1.0;
     rendererRef.current = renderer;
 
-    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       SCENE & CAMERA
-       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    /* ━━ SCENE & CAMERA ━━ */
     const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0xd0b8c8, 0.014);
 
     const camera = new THREE.PerspectiveCamera(
-      mobile ? 48 : 36,
+      mobile ? 50 : 38,
       window.innerWidth / window.innerHeight,
       0.1,
       200
     );
-    camera.position.set(0, 0.3, 20);
+    camera.position.set(0, 2, 18);
     camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
 
-    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       HDR ENVIRONMENT MAP
-       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-    const skyCanvas = buildHDRSkyTexture();
+    /* ━━ SKY ENVIRONMENT ━━ */
+    const skyCanvas = buildSkyTexture();
     const skyTex = new THREE.CanvasTexture(skyCanvas);
     skyTex.mapping = THREE.EquirectangularReflectionMapping;
     skyTex.colorSpace = THREE.SRGBColorSpace;
@@ -145,103 +165,183 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     const pmrem = new THREE.PMREMGenerator(renderer);
     pmrem.compileEquirectangularShader();
     const envMap = pmrem.fromEquirectangular(skyTex).texture;
-
     scene.background = skyTex;
     scene.environment = envMap;
     pmrem.dispose();
 
-    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       LIGHTING
-       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-    scene.add(new THREE.AmbientLight(0xd8d0e8, 0.25));
+    /* ━━ LIGHTING — controlled ━━ */
+    scene.add(new THREE.AmbientLight(0xe0d8e8, 0.5));
 
-    const key = new THREE.DirectionalLight(0xfff4e0, 2.5);
-    key.position.set(7, 12, 5);
+    const key = new THREE.DirectionalLight(0xfff0e0, 1.2);
+    key.position.set(5, 10, 5);
     scene.add(key);
 
-    const fill = new THREE.DirectionalLight(0xc0d0ff, 0.7);
-    fill.position.set(-7, 3, 5);
+    const fill = new THREE.DirectionalLight(0xc8d0ff, 0.4);
+    fill.position.set(-5, 3, 5);
     scene.add(fill);
 
-    const rim = new THREE.DirectionalLight(0xd0b8ff, 1.8);
-    rim.position.set(0, 6, -10);
+    const rim = new THREE.DirectionalLight(0xd8c0ff, 0.8);
+    rim.position.set(0, 4, -8);
     scene.add(rim);
 
-    const bounce = new THREE.DirectionalLight(0xffd8b0, 0.5);
-    bounce.position.set(0, -6, 4);
-    scene.add(bounce);
-
-    const kicker = new THREE.DirectionalLight(0xffe0f0, 0.8);
-    kicker.position.set(-8, 8, -3);
-    scene.add(kicker);
-
-    const spec = new THREE.PointLight(0xffffff, 50, 40);
-    spec.position.set(3, 5, 8);
+    const spec = new THREE.PointLight(0xffffff, 15, 30);
+    spec.position.set(3, 4, 8);
     scene.add(spec);
     specLightRef.current = spec;
 
-    const sp1 = new THREE.PointLight(0xc8b8ff, 18, 22);
-    sp1.position.set(-5, 4, 4);
-    scene.add(sp1);
+    /* ━━ CLOUDS ━━ */
+    const cloudTextures: THREE.CanvasTexture[] = [];
+    for (let v = 0; v < 3; v++) {
+      cloudTextures.push(new THREE.CanvasTexture(buildCloudCanvas(v)));
+    }
 
-    const sp2 = new THREE.PointLight(0xffe0c8, 14, 20);
-    sp2.position.set(5, -2, 6);
-    scene.add(sp2);
+    const cloudDefs = [
+      { x: -14, y: 6.5, z: -8,  sx: 9,  sy: 3.5, sp: 0.15, op: 0.65 },
+      { x: -6,  y: 8,   z: -12, sx: 12, sy: 5,   sp: 0.08, op: 0.50 },
+      { x: 5,   y: 7,   z: -6,  sx: 8,  sy: 3,   sp: 0.12, op: 0.60 },
+      { x: 15,  y: 9,   z: -14, sx: 14, sy: 5.5, sp: 0.06, op: 0.45 },
+      { x: -10, y: 10,  z: -18, sx: 16, sy: 6,   sp: 0.04, op: 0.35 },
+      { x: 8,   y: 5.5, z: -4,  sx: 7,  sy: 2.5, sp: 0.18, op: 0.55 },
+      { x: -18, y: 7.5, z: -10, sx: 10, sy: 4,   sp: 0.10, op: 0.50 },
+      { x: 20,  y: 8.5, z: -16, sx: 13, sy: 5,   sp: 0.05, op: 0.40 },
+      { x: -3,  y: 11,  z: -20, sx: 18, sy: 7,   sp: 0.03, op: 0.30 },
+      { x: 12,  y: 6,   z: -7,  sx: 8,  sy: 3,   sp: 0.14, op: 0.50 },
+      { x: -20, y: 5,   z: -3,  sx: 6,  sy: 2,   sp: 0.20, op: 0.45 },
+      { x: 0,   y: 9.5, z: -15, sx: 11, sy: 4.5, sp: 0.07, op: 0.40 },
+    ];
 
-    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       GLASS MATERIAL
-       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    for (let i = 0; i < cloudDefs.length; i++) {
+      const d = cloudDefs[i];
+      const mat = new THREE.SpriteMaterial({
+        map: cloudTextures[i % 3],
+        transparent: true,
+        opacity: d.op,
+        depthWrite: false,
+        fog: true,
+      });
+      const sprite = new THREE.Sprite(mat);
+      sprite.position.set(d.x, d.y, d.z);
+      sprite.scale.set(d.sx, d.sy, 1);
+      sprite.userData.speed = d.sp;
+      sprite.userData.wrapRight = 30;
+      sprite.userData.wrapLeft = -30;
+      scene.add(sprite);
+      cloudsRef.current.push(sprite);
+    }
+
+    /* ━━ GROUND ━━ */
+    const groundGeo = new THREE.PlaneGeometry(60, 40);
+    groundGeo.rotateX(-Math.PI / 2);
+    const groundMat = new THREE.MeshLambertMaterial({
+      color: new THREE.Color(0x164a0e),
+    });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.position.set(0, -2.01, 2);
+    scene.add(ground);
+
+    /* ━━ GRASS ━━ */
+    const GRASS_COUNT = mobile ? 3500 : 9000;
+    const SEGS = 4;
+
+    const gPositions: number[] = [];
+    const gIndices: number[] = [];
+    for (let i = 0; i <= SEGS; i++) {
+      const t = i / SEGS;
+      const w = 0.04 * (1 - t * 0.85);
+      gPositions.push(-w, t, 0);
+      gPositions.push(w, t, 0);
+    }
+    for (let i = 0; i < SEGS; i++) {
+      const b = i * 2;
+      gIndices.push(b, b + 1, b + 2);
+      gIndices.push(b + 1, b + 3, b + 2);
+    }
+
+    const grassGeo = new THREE.InstancedBufferGeometry();
+    grassGeo.setAttribute('position', new THREE.Float32BufferAttribute(gPositions, 3));
+    grassGeo.setIndex(gIndices);
+    grassGeo.instanceCount = GRASS_COUNT;
+
+    const offsets = new Float32Array(GRASS_COUNT * 3);
+    const angles = new Float32Array(GRASS_COUNT);
+    const scales = new Float32Array(GRASS_COUNT);
+    const phases = new Float32Array(GRASS_COUNT);
+
+    for (let i = 0; i < GRASS_COUNT; i++) {
+      offsets[i * 3] = (Math.random() - 0.5) * 40;
+      offsets[i * 3 + 1] = -2;
+      offsets[i * 3 + 2] = -6 + Math.random() * 20;
+      angles[i] = Math.random() * Math.PI * 2;
+      scales[i] = 0.4 + Math.random() * 1.2;
+      phases[i] = Math.random();
+    }
+
+    grassGeo.setAttribute('offset', new THREE.InstancedBufferAttribute(offsets, 3));
+    grassGeo.setAttribute('angle', new THREE.InstancedBufferAttribute(angles, 1));
+    grassGeo.setAttribute('heightScale', new THREE.InstancedBufferAttribute(scales, 1));
+    grassGeo.setAttribute('phase', new THREE.InstancedBufferAttribute(phases, 1));
+
+    const fogColor = new THREE.Color(0xd0b8c8);
+    const grassMat = new THREE.ShaderMaterial({
+      vertexShader: GRASS_VS,
+      fragmentShader: GRASS_FS,
+      uniforms: {
+        uTime: { value: 0 },
+        uWindStrength: { value: 0.35 },
+        uFogColor: { value: fogColor },
+        uFogDensity: { value: 0.014 },
+      },
+      side: THREE.DoubleSide,
+    });
+
+    const grassMesh = new THREE.Mesh(grassGeo, grassMat);
+    grassMesh.frustumCulled = false;
+    scene.add(grassMesh);
+    grassMatRef.current = grassMat;
+
+    /* ━━ GLASS TEXT ━━ */
     const glass = new THREE.MeshPhysicalMaterial({
-      transmission: 0.95,
-      roughness: 0.02,
+      transmission: 0.94,
+      roughness: 0.03,
       metalness: 0.0,
-      ior: 1.52,
-      thickness: 0.5,
-      envMapIntensity: 3.0,
-      specularIntensity: 1.5,
+      ior: 1.5,
+      thickness: 0.45,
+      envMapIntensity: 2.0,
+      specularIntensity: 1.0,
       specularColor: new THREE.Color(0xffffff),
-      clearcoat: 1.0,
-      clearcoatRoughness: 0.01,
-      attenuationColor: new THREE.Color('#e8e0fa'),
-      attenuationDistance: 10.0,
+      clearcoat: 0.9,
+      clearcoatRoughness: 0.02,
+      attenuationColor: new THREE.Color('#e8e2f4'),
+      attenuationDistance: 12.0,
       color: new THREE.Color(0xffffff),
       side: THREE.FrontSide,
     });
 
-    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       3D TEXT
-       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
     const fontLoader = new FontLoader();
     fontLoader.load(
       'https://cdn.jsdelivr.net/npm/three@0.164.0/examples/fonts/helvetiker_bold.typeface.json',
       (font: any) => {
-        const sz = mobile ? 0.85 : 1.35;
-        const depth = mobile ? 0.45 : 0.7;
-        const curveSegs = mobile ? 12 : 24;
-        const bevelSegs = mobile ? 4 : 10;
-
+        const sz = mobile ? 0.8 : 1.3;
+        const depth = mobile ? 0.4 : 0.6;
         const geo = new TextGeometry('LaTechNique', {
           font,
           size: sz,
           height: depth,
-          curveSegments: curveSegs,
+          curveSegments: mobile ? 10 : 20,
           bevelEnabled: true,
-          bevelThickness: 0.14,
-          bevelSize: 0.07,
+          bevelThickness: 0.12,
+          bevelSize: 0.06,
           bevelOffset: 0,
-          bevelSegments: bevelSegs,
+          bevelSegments: mobile ? 4 : 8,
         });
-
         geo.computeBoundingBox();
         const bb = geo.boundingBox!;
-
         const mesh = new THREE.Mesh(geo, glass);
         mesh.position.set(
           -(bb.max.x - bb.min.x) / 2,
           -(bb.max.y - bb.min.y) / 2,
           -(bb.max.z - bb.min.z) / 2
         );
-
         const group = new THREE.Group();
         group.add(mesh);
         scene.add(group);
@@ -249,35 +349,25 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
       }
     );
 
-    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       POST-PROCESSING
-       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    /* ━━ POST-PROCESSING — very subtle bloom ━━ */
     const composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, camera));
-
     const bloom = new UnrealBloomPass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),
+      0.08,
       0.3,
-      0.5,
-      0.75
+      0.92
     );
     composer.addPass(bloom);
-
-    const chromaPass = new ShaderPass(ChromaVignetteShader);
-    chromaPass.uniforms.uChroma.value = mobile ? 0.002 : 0.004;
-    chromaPass.uniforms.uVignette.value = 0.3;
-    composer.addPass(chromaPass);
-
     composerRef.current = composer;
 
-    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       HELPER FUNCTIONS
-       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    /* ━━ HELPER: header world Y ━━ */
     const _v1 = new THREE.Vector3();
     const _v2 = new THREE.Vector3();
     const _v3 = new THREE.Vector3();
 
-    function getWorldYAtScreen(cam: any, ndcY: number): number {
+    function headerWorldY(cam: THREE.PerspectiveCamera): number {
+      const ndcY = 1 - 2 * (36 / window.innerHeight);
       _v1.set(0, ndcY, -1).unproject(cam);
       _v2.set(0, ndcY, 1).unproject(cam);
       _v3.subVectors(_v2, _v1).normalize();
@@ -285,57 +375,65 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
       return _v1.y + _v3.y * t;
     }
 
-    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       ANIMATION LOOP
-       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-    const LERP_SPEED = 0.05;
+    /* ━━ ANIMATION LOOP ━━ */
+    const LERP = 0.05;
     const ANIM_END = 0.65;
+    lastTimeRef.current = performance.now();
 
     function animate() {
       frameRef.current = requestAnimationFrame(animate);
 
+      const now = performance.now();
+      const dt = (now - lastTimeRef.current) / 1000;
+      lastTimeRef.current = now;
+      clockRef.current += dt;
+      const time = clockRef.current;
+
       smoothScrollRef.current = lerp(
         smoothScrollRef.current,
         scrollRef.current,
-        LERP_SPEED
+        LERP
       );
       const s = smoothScrollRef.current;
-
       const animT = Math.min(1, s / ANIM_END);
       const eased = smoothstep(0, 1, animT);
 
-      const targetCamZ = 20 - s * 5;
-      const targetCamY = 0.3 + s * 3.5;
-      const targetLookY = s * 3.5;
+      // Camera fixed
+      camera.position.set(0, 2, 18);
+      camera.lookAt(0, 0, 0);
 
-      camera.position.z = lerp(camera.position.z, targetCamZ, LERP_SPEED);
-      camera.position.y = lerp(camera.position.y, targetCamY, LERP_SPEED);
-      lookAtYRef.current = lerp(lookAtYRef.current, targetLookY, LERP_SPEED);
-      camera.lookAt(0, lookAtYRef.current, 0);
-
+      // Text
       if (textGroupRef.current) {
-        const group = textGroupRef.current;
-        group.rotation.y = eased * Math.PI * 4;
-        group.rotation.x = Math.sin(animT * Math.PI) * 0.1;
-        group.scale.setScalar(Math.max(0.18, 1 - eased * 0.82));
-
+        const g = textGroupRef.current;
+        g.rotation.y = eased * Math.PI * 4;
+        g.rotation.x = Math.sin(animT * Math.PI) * 0.08;
+        const sc = Math.max(0.18, 1 - eased * 0.82);
+        g.scale.setScalar(lerp(g.scale.x, sc, LERP));
         camera.updateMatrixWorld();
-        const headerNdcY = 1 - 2 * (36 / window.innerHeight);
-        const headerWorldY = getWorldYAtScreen(camera, headerNdcY);
-        group.position.y = lerp(0, headerWorldY, eased);
+        g.position.y = lerp(0, headerWorldY(camera), eased);
       }
 
+      // Mouse spec
       if (specLightRef.current) {
         specLightRef.current.position.x = lerp(
-          specLightRef.current.position.x,
-          3 + mouseRef.current.x * 5,
-          0.03
+          specLightRef.current.position.x, 3 + mouseRef.current.x * 4, 0.03
         );
         specLightRef.current.position.y = lerp(
-          specLightRef.current.position.y,
-          5 + mouseRef.current.y * 3,
-          0.03
+          specLightRef.current.position.y, 4 + mouseRef.current.y * 2, 0.03
         );
+      }
+
+      // Grass wind
+      if (grassMatRef.current) {
+        grassMatRef.current.uniforms.uTime.value = time;
+      }
+
+      // Cloud drift
+      for (const cl of cloudsRef.current) {
+        cl.position.x += cl.userData.speed * dt;
+        if (cl.position.x > cl.userData.wrapRight) {
+          cl.position.x = cl.userData.wrapLeft;
+        }
       }
 
       composer.render();
@@ -344,9 +442,7 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     animate();
   }, []);
 
-  useEffect(() => {
-    scrollRef.current = scrollProgress;
-  }, [scrollProgress]);
+  useEffect(() => { scrollRef.current = scrollProgress; }, [scrollProgress]);
 
   useEffect(() => {
     const fn = (e: MouseEvent) => {
@@ -382,136 +478,102 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
   return <canvas ref={canvasRef} className="glass-canvas" />;
 };
 
-/* ═══════════════════════════════════════════════════════════
-   HDR SKY TEXTURE
-   ═══════════════════════════════════════════════════════════ */
-function buildHDRSkyTexture(): HTMLCanvasElement {
-  const w = 2048;
-  const h = 1024;
+/* ═══════════════════════════════════════════════════════
+   SKY TEXTURE
+   Purple zenith → pink/peach horizon → green ground
+   No painted clouds — 3D sprites handle those
+   ═══════════════════════════════════════════════════════ */
+function buildSkyTexture(): HTMLCanvasElement {
+  const w = 2048, h = 1024;
   const c = document.createElement('canvas');
-  c.width = w;
-  c.height = h;
+  c.width = w; c.height = h;
   const ctx = c.getContext('2d')!;
 
-  const sky = ctx.createLinearGradient(0, 0, 0, h);
-  sky.addColorStop(0.0,  '#3D3280');
-  sky.addColorStop(0.06, '#4E4298');
-  sky.addColorStop(0.14, '#6858AE');
-  sky.addColorStop(0.22, '#8874C0');
-  sky.addColorStop(0.30, '#A694D0');
-  sky.addColorStop(0.38, '#C0B0D8');
-  sky.addColorStop(0.44, '#D4C4D4');
-  sky.addColorStop(0.50, '#E2D2C6');
-  sky.addColorStop(0.56, '#ECDCB8');
-  sky.addColorStop(0.62, '#F2D0A0');
-  sky.addColorStop(0.70, '#ECC088');
-  sky.addColorStop(0.78, '#E0AC70');
-  sky.addColorStop(0.86, '#D49858');
-  sky.addColorStop(0.94, '#C48848');
-  sky.addColorStop(1.0,  '#B07838');
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, w, h);
-
-  const horizon = ctx.createLinearGradient(0, h * 0.40, 0, h * 0.64);
-  horizon.addColorStop(0.0, 'rgba(255,210,160,0)');
-  horizon.addColorStop(0.25, 'rgba(255,215,175,0.12)');
-  horizon.addColorStop(0.50, 'rgba(255,200,150,0.18)');
-  horizon.addColorStop(0.75, 'rgba(255,215,175,0.12)');
-  horizon.addColorStop(1.0, 'rgba(255,210,160,0)');
-  ctx.fillStyle = horizon;
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0.00, '#4A3D8F');
+  g.addColorStop(0.10, '#6355A4');
+  g.addColorStop(0.20, '#8272B8');
+  g.addColorStop(0.30, '#A898CC');
+  g.addColorStop(0.38, '#C0B0D4');
+  g.addColorStop(0.44, '#D4C4D4');
+  g.addColorStop(0.50, '#E2D2C8');
+  g.addColorStop(0.56, '#ECDCBC');
+  g.addColorStop(0.62, '#F0CCA0');
+  g.addColorStop(0.70, '#E8BC88');
+  g.addColorStop(0.80, '#9AAA60');
+  g.addColorStop(0.88, '#4A7830');
+  g.addColorStop(0.94, '#2A5818');
+  g.addColorStop(1.00, '#1A4A10');
+  ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
 
   ctx.globalCompositeOperation = 'screen';
   const sun = ctx.createRadialGradient(
-    w * 0.3, h * 0.50, 0,
-    w * 0.3, h * 0.50, w * 0.22
+    w * 0.35, h * 0.48, 0,
+    w * 0.35, h * 0.48, w * 0.2
   );
-  sun.addColorStop(0.0, 'rgba(255,235,210,0.20)');
-  sun.addColorStop(0.2, 'rgba(255,220,185,0.12)');
-  sun.addColorStop(0.5, 'rgba(255,205,165,0.05)');
-  sun.addColorStop(1.0, 'rgba(255,200,150,0)');
+  sun.addColorStop(0, 'rgba(255,230,200,0.12)');
+  sun.addColorStop(0.4, 'rgba(255,215,180,0.06)');
+  sun.addColorStop(1, 'rgba(255,200,150,0)');
   ctx.fillStyle = sun;
   ctx.fillRect(0, 0, w, h);
 
-  const fill = ctx.createRadialGradient(
-    w * 0.75, h * 0.45, 0,
-    w * 0.75, h * 0.45, w * 0.18
-  );
-  fill.addColorStop(0.0, 'rgba(200,190,240,0.10)');
-  fill.addColorStop(0.5, 'rgba(190,180,230,0.04)');
-  fill.addColorStop(1.0, 'rgba(180,170,220,0)');
-  ctx.fillStyle = fill;
-  ctx.fillRect(0, 0, w, h);
+  return c;
+}
 
-  const S = [
-    0.12, 0.34, 0.56, 0.78, 0.91, 0.23, 0.45, 0.67, 0.89, 0.01,
-    0.38, 0.72, 0.15, 0.58, 0.93, 0.27, 0.61, 0.84, 0.49, 0.06,
-    0.33, 0.77, 0.19, 0.52, 0.88, 0.41, 0.66, 0.03, 0.75, 0.29,
-    0.55, 0.82, 0.11, 0.47, 0.69, 0.95, 0.36, 0.63, 0.08, 0.71,
+/* ═══════════════════════════════════════════════════════
+   CLOUD CANVAS — soft fluffy shapes
+   ═══════════════════════════════════════════════════════ */
+function buildCloudCanvas(variant: number): HTMLCanvasElement {
+  const w = 512, h = 256;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d')!;
+
+  const layouts = [
+    [
+      { x: 0.25, y: 0.50, r: 0.22 },
+      { x: 0.40, y: 0.42, r: 0.28 },
+      { x: 0.55, y: 0.48, r: 0.26 },
+      { x: 0.70, y: 0.52, r: 0.20 },
+      { x: 0.45, y: 0.56, r: 0.24 },
+      { x: 0.60, y: 0.40, r: 0.18 },
+    ],
+    [
+      { x: 0.20, y: 0.48, r: 0.20 },
+      { x: 0.35, y: 0.44, r: 0.25 },
+      { x: 0.50, y: 0.50, r: 0.30 },
+      { x: 0.65, y: 0.46, r: 0.22 },
+      { x: 0.78, y: 0.52, r: 0.18 },
+      { x: 0.42, y: 0.55, r: 0.20 },
+      { x: 0.58, y: 0.42, r: 0.16 },
+    ],
+    [
+      { x: 0.30, y: 0.50, r: 0.26 },
+      { x: 0.48, y: 0.44, r: 0.30 },
+      { x: 0.65, y: 0.50, r: 0.24 },
+      { x: 0.38, y: 0.56, r: 0.22 },
+      { x: 0.55, y: 0.38, r: 0.18 },
+      { x: 0.75, y: 0.46, r: 0.16 },
+      { x: 0.22, y: 0.44, r: 0.14 },
+      { x: 0.80, y: 0.54, r: 0.12 },
+    ],
   ];
 
-  for (let i = 0; i < 12; i++) {
-    const cx = S[i % 40] * w;
-    const cy = h * 0.08 + S[(i + 7) % 40] * h * 0.35;
-    const rx = 250 + S[(i + 3) % 40] * 500;
-    const ry = 50 + S[(i + 11) % 40] * 120;
-    const a = 0.035 + S[(i + 5) % 40] * 0.07;
-    const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry));
-    cg.addColorStop(0.0, `rgba(210,205,235,${a})`);
-    cg.addColorStop(0.5, `rgba(205,200,230,${a * 0.35})`);
-    cg.addColorStop(1.0, 'rgba(200,195,225,0)');
-    ctx.fillStyle = cg;
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, rx, ry, S[(i + 2) % 40] * 0.4, 0, Math.PI * 2);
-    ctx.fill();
+  const blobs = layouts[variant % 3];
+  const dim = Math.min(w, h);
+
+  for (const b of blobs) {
+    const cx = b.x * w, cy = b.y * h, r = b.r * dim;
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    grad.addColorStop(0.0, 'rgba(255,255,255,0.85)');
+    grad.addColorStop(0.25, 'rgba(255,255,255,0.55)');
+    grad.addColorStop(0.55, 'rgba(255,255,255,0.20)');
+    grad.addColorStop(0.80, 'rgba(255,255,255,0.05)');
+    grad.addColorStop(1.0, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
   }
-
-  for (let i = 12; i < 28; i++) {
-    const cx = S[i % 40] * w;
-    const cy = h * 0.20 + S[(i + 3) % 40] * h * 0.35;
-    const rx = 80 + S[(i + 7) % 40] * 250;
-    const ry = 20 + S[(i + 11) % 40] * 65;
-    const a = 0.03 + S[(i + 9) % 40] * 0.06;
-    const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry));
-    cg.addColorStop(0.0, `rgba(225,218,238,${a})`);
-    cg.addColorStop(0.5, `rgba(220,215,235,${a * 0.3})`);
-    cg.addColorStop(1.0, 'rgba(215,210,230,0)');
-    ctx.fillStyle = cg;
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  for (let i = 28; i < 40; i++) {
-    const cx = S[i % 40] * w;
-    const cy = h * 0.38 + S[(i + 5) % 40] * h * 0.18;
-    const rx = 60 + S[(i + 7) % 40] * 180;
-    const ry = 12 + S[(i + 11) % 40] * 35;
-    const a = 0.025 + S[(i + 1) % 40] * 0.04;
-    const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry));
-    cg.addColorStop(0.0, `rgba(240,230,225,${a})`);
-    cg.addColorStop(0.6, `rgba(235,225,220,${a * 0.25})`);
-    cg.addColorStop(1.0, 'rgba(230,220,215,0)');
-    ctx.fillStyle = cg;
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  ctx.globalCompositeOperation = 'multiply';
-  const zenith = ctx.createLinearGradient(0, 0, 0, h * 0.25);
-  zenith.addColorStop(0.0, 'rgba(55,40,110,0.20)');
-  zenith.addColorStop(1.0, 'rgba(80,65,130,0)');
-  ctx.fillStyle = zenith;
-  ctx.fillRect(0, 0, w, h * 0.25);
-
-  ctx.globalCompositeOperation = 'screen';
-  const ground = ctx.createLinearGradient(0, h * 0.80, 0, h);
-  ground.addColorStop(0.0, 'rgba(200,155,90,0)');
-  ground.addColorStop(0.5, 'rgba(195,150,85,0.06)');
-  ground.addColorStop(1.0, 'rgba(185,140,75,0.10)');
-  ctx.fillStyle = ground;
-  ctx.fillRect(0, 0, w, h);
 
   return c;
 }
