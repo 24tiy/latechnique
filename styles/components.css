@@ -4,6 +4,53 @@
    ======================================== */
 
 /* ========================================
+   GLASS 3D TITLE (Air.inc style)
+   ======================================== */
+
+.glass-title {
+  font-size: clamp(4rem, 15vw, 12rem);
+  font-weight: 900;
+  line-height: 0.9;
+  letter-spacing: -0.03em;
+  margin: 0;
+  padding: 2rem 0;
+  
+  /* Glass effect */
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.9),
+    rgba(255, 255, 255, 0.6)
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  
+  /* 3D depth effect */
+  text-shadow: 
+    0 1px 0 rgba(255, 255, 255, 0.8),
+    0 2px 0 rgba(255, 255, 255, 0.7),
+    0 3px 0 rgba(255, 255, 255, 0.6),
+    0 4px 0 rgba(255, 255, 255, 0.5),
+    0 5px 0 rgba(255, 255, 255, 0.4),
+    0 6px 0 rgba(255, 255, 255, 0.3),
+    0 8px 10px rgba(0, 0, 0, 0.1),
+    0 12px 20px rgba(0, 0, 0, 0.08);
+  
+  /* Subtle animation */
+  animation: float-subtle 6s ease-in-out infinite;
+  position: relative;
+}
+
+@keyframes float-subtle {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-5px) scale(1.01);
+  }
+}
+
+/* ========================================
    BUTTONS
    ======================================== */
 
