@@ -1,3 +1,7 @@
+/* ═══════════════════════════════════════════
+   HERO — 3D GLASS + SCROLL ROTATION
+   ═══════════════════════════════════════════ */
+
 .hero-scroll-section {
   height: 350vh;
   position: relative;
@@ -12,7 +16,7 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: #e8e4ee;
+  background: #c8b8d0;
 }
 
 .glass-canvas {
@@ -30,7 +34,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #e8e4ee;
+  background: #c8b8d0;
 }
 
 .glass-loader span {
@@ -76,21 +80,15 @@
 
 /* ═══════════════════════════════════════════
    HEADER — scrolled state
-
-   Semi-transparent with subtle blur so the 3D
-   glass logo shows through the center area.
-   Nav text stays readable thanks to backdrop-blur
-   on the side areas, while the center remains
-   clear for the 3D text to shine through.
+   Semi-transparent sides, clear center for 3D logo
    ═══════════════════════════════════════════ */
-
 .header-scrolled {
   background: linear-gradient(
     90deg,
     rgba(255, 255, 255, 0.72) 0%,
     rgba(255, 255, 255, 0.25) 30%,
-    rgba(255, 255, 255, 0.10) 45%,
-    rgba(255, 255, 255, 0.10) 55%,
+    rgba(255, 255, 255, 0.08) 45%,
+    rgba(255, 255, 255, 0.08) 55%,
     rgba(255, 255, 255, 0.25) 70%,
     rgba(255, 255, 255, 0.72) 100%
   );
