@@ -1,7 +1,3 @@
-/* ═══════════════════════════════════════════
-   HERO — 3D GLASS + SCROLL ROTATION
-   ═══════════════════════════════════════════ */
-
 .hero-scroll-section {
   height: 350vh;
   position: relative;
@@ -76,6 +72,30 @@
 .hero-cta {
   display: flex;
   gap: 1rem;
+}
+
+/* ═══════════════════════════════════════════
+   HEADER — scrolled state
+
+   Semi-transparent with subtle blur so the 3D
+   glass logo shows through the center area.
+   Nav text stays readable thanks to backdrop-blur
+   on the side areas, while the center remains
+   clear for the 3D text to shine through.
+   ═══════════════════════════════════════════ */
+
+.header-scrolled {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.72) 0%,
+    rgba(255, 255, 255, 0.25) 30%,
+    rgba(255, 255, 255, 0.10) 45%,
+    rgba(255, 255, 255, 0.10) 55%,
+    rgba(255, 255, 255, 0.25) 70%,
+    rgba(255, 255, 255, 0.72) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 /* ── Scroll indicator ── */
