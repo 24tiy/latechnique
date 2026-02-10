@@ -29,34 +29,20 @@ export const Header: React.FC = () => {
     >
       <div className="container h-full">
         <div className="flex items-center justify-between h-full">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <span className="text-xl font-bold tracking-tight">LaTechnique</span>
-          </Link>
-
-          {/* Navigation */}
+          {/* Navigation — Left */}
           <nav className="hidden md:flex items-center gap-8">
-            <Link
-              href="#features"
-              className="text-sm font-medium hover:opacity-70 transition-opacity"
-            >
+            <Link href="#features" className="nav-link">
               Возможности
             </Link>
-            <Link
-              href="#pricing"
-              className="text-sm font-medium hover:opacity-70 transition-opacity"
-            >
+            <Link href="#pricing" className="nav-link">
               Тарифы
             </Link>
-            <Link
-              href="#how-it-works"
-              className="text-sm font-medium hover:opacity-70 transition-opacity"
-            >
+            <Link href="#how-it-works" className="nav-link">
               Как это работает
             </Link>
           </nav>
 
-          {/* CTA Buttons */}
+          {/* CTA Buttons — Right */}
           <div className="flex items-center gap-3">
             <Button variant="tertiary" size="sm" href="/login">
               Войти
