@@ -12,7 +12,6 @@ export const Header: React.FC = () => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
     };
-
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -29,7 +28,6 @@ export const Header: React.FC = () => {
     >
       <div className="container h-full">
         <div className="flex items-center justify-between h-full">
-          {/* Navigation — Left */}
           <nav className="hidden md:flex items-center gap-8">
             <Link href="#features" className="nav-link">
               Возможности
@@ -42,10 +40,8 @@ export const Header: React.FC = () => {
             </Link>
           </nav>
 
-          {/* Center space — 3D logo shows through here */}
           <div className="flex-1" />
 
-          {/* CTA Buttons — Right */}
           <div className="flex items-center gap-3">
             <Button variant="tertiary" size="sm" href="/login">
               Войти
