@@ -6,6 +6,7 @@
 @import './typography.css';
 @import './layout.css';
 @import './components.css';
+@import './hero.css';
 
 /* ========================================
    TAILWIND BASE
