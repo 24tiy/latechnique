@@ -20,9 +20,9 @@ export const Header: React.FC = () => {
   return (
     <header
       className={cn(
-        'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
+        'fixed top-0 left-0 right-0 z-50 transition-all duration-500',
         scrolled
-          ? 'bg-white/80 backdrop-blur-md border-b border-black/10'
+          ? 'header-scrolled border-b border-black/5'
           : 'bg-transparent'
       )}
       style={{ height: 'var(--header-height)' }}
@@ -41,6 +41,9 @@ export const Header: React.FC = () => {
               Как это работает
             </Link>
           </nav>
+
+          {/* Center space — 3D logo shows through here */}
+          <div className="flex-1" />
 
           {/* CTA Buttons — Right */}
           <div className="flex items-center gap-3">
