@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { Button } from '../design-system/Button';
 
-// Dynamic import — Three.js only runs client-side
 const GlassScene = dynamic(() => import('./GlassScene'), {
   ssr: false,
   loading: () => (
@@ -20,8 +19,6 @@ export const Hero: React.FC = () => {
   const hintRef = useRef<HTMLDivElement>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
 
-  const ease = (t: number, pow: number) => 1 - Math.pow(1 - t, pow);
-
   const handleScroll = useCallback(() => {
     const section = sectionRef.current;
     if (!section) return;
@@ -34,20 +31,16 @@ export const Hero: React.FC = () => {
     const progress = Math.max(0, Math.min(1, raw));
     setScrollProgress(progress);
 
-    const e = ease(progress, 2.4);
-
-    // Subtitle fade
+    // Subtitle appears at ~70% scroll
     if (subRef.current) {
-      const subE = Math.max(0, (e - 0.6) / 0.4);
-      const subBlur = 8 * (1 - subE);
-      subRef.current.style.opacity = String(subE);
-      subRef.current.style.transform = `translateY(${12 * (1 - subE)}px)`;
-      subRef.current.style.filter = subE < 0.99 ? `blur(${subBlur}px)` : 'none';
+      const subT = Math.max(0, (progress - 0.65) / 0.35);
+      subRef.current.style.opacity = String(subT);
+      subRef.current.style.transform = `translateY(${16 * (1 - subT)}px)`;
     }
 
-    // Scroll hint fade
+    // Scroll hint fades out quickly
     if (hintRef.current) {
-      hintRef.current.style.opacity = String(Math.max(0, 1 - progress * 5));
+      hintRef.current.style.opacity = String(Math.max(0, 1 - progress * 6));
     }
   }, []);
 
@@ -60,10 +53,8 @@ export const Hero: React.FC = () => {
   return (
     <section ref={sectionRef} className="hero-scroll-section">
       <div className="hero-sticky">
-        {/* Three.js 3D Glass Canvas */}
         <GlassScene scrollProgress={scrollProgress} />
 
-        {/* Overlay content */}
         <div className="hero-overlay">
           <div className="hero-sub" ref={subRef} style={{ opacity: 0 }}>
             <p className="hero-subtitle">
@@ -77,7 +68,6 @@ export const Hero: React.FC = () => {
           </div>
         </div>
 
-        {/* Scroll indicator */}
         <div className="hero-scroll-hint" ref={hintRef}>
           <div className="hero-scroll-track">
             <div className="hero-scroll-dot" />
