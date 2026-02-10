@@ -11,10 +11,10 @@ export const Footer: React.FC = () => {
           {/* Brand */}
           <div className="text-center md:text-left">
             <Link href="/" className="inline-block mb-2">
-              <span className="text-lg font-bold">LaTechnique</span>
+              <span className="text-lg font-bold italic">LaTechNique</span>
             </Link>
             <p className="body-small text-muted">
-              Social media analytics platform
+              Платформа аналитики социальных сетей
             </p>
           </div>
 
@@ -24,27 +24,27 @@ export const Footer: React.FC = () => {
               href="/privacy"
               className="body-small text-muted hover:text-black transition-colors"
             >
-              Privacy
+              Конфиденциальность
             </Link>
             <Link
               href="/terms"
               className="body-small text-muted hover:text-black transition-colors"
             >
-              Terms
+              Условия
             </Link>
             <a
-              href="https://twitter.com"
+              href="https://t.me/latechnique_support"
               target="_blank"
               rel="noopener noreferrer"
               className="body-small text-muted hover:text-black transition-colors"
             >
-              Twitter
+              Telegram
             </a>
           </div>
 
           {/* Copyright */}
           <p className="body-small text-muted">
-            © {currentYear} LaTechnique
+            © {currentYear} LaTechNique
           </p>
         </div>
       </div>
