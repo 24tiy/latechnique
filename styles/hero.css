@@ -1,0 +1,194 @@
+/* ========================================
+   HERO SCROLL-DRIVEN ANIMATION
+   Blur-to-focus reveal tied to scroll
+   ======================================== */
+
+.hero-scroll-section {
+  /* Extra tall to give scroll room — 250vh means 1.5 viewports of scroll travel */
+  height: 250vh;
+  position: relative;
+}
+
+.hero-sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Clean, almost-white background */
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  background: #fafafa;
+  z-index: 0;
+}
+
+/* Content wrapper */
+.hero-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 1.5rem;
+  gap: 0;
+}
+
+/* ========================================
+   TITLE TYPOGRAPHY
+   ======================================== */
+
+.hero-title {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display',
+    'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+  font-size: clamp(3.5rem, 12vw, 10rem);
+  font-weight: 600;
+  line-height: 0.95;
+  color: #1a1a1a;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+  user-select: none;
+
+  /* GPU acceleration for smooth filter transitions */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* "La" — slightly lighter weight for contrast */
+.hero-title-la {
+  font-weight: 300;
+  color: #2a2a2a;
+}
+
+/* "TechNique" — medium weight, slightly darker */
+.hero-title-technique {
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+/* ========================================
+   SUBTITLE & CTA
+   ======================================== */
+
+.hero-sub {
+  margin-top: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  transform: translateZ(0);
+}
+
+.hero-subtitle {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text',
+    'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  font-weight: 400;
+  color: #666;
+  line-height: 1.5;
+  margin: 0;
+  letter-spacing: -0.01em;
+  max-width: 36ch;
+}
+
+.hero-cta {
+  display: flex;
+  gap: 1rem;
+}
+
+/* ========================================
+   SCROLL INDICATOR
+   ======================================== */
+
+.hero-scroll-hint {
+  position: absolute;
+  bottom: 2.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  z-index: 2;
+}
+
+.hero-scroll-dot-track {
+  width: 1.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  border: 1.5px solid rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 0.4rem;
+}
+
+.hero-scroll-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.3);
+  animation: scrollDotPulse 2s ease-in-out infinite;
+}
+
+@keyframes scrollDotPulse {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translateY(8px);
+    opacity: 0.3;
+  }
+}
+
+.hero-scroll-label {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text',
+    'Helvetica Neue', sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 400;
+  color: rgba(0, 0, 0, 0.3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
+@media (max-width: 768px) {
+  .hero-scroll-section {
+    height: 220vh;
+  }
+
+  .hero-title {
+    font-size: clamp(2.5rem, 14vw, 5rem);
+  }
+
+  .hero-sub {
+    margin-top: 2rem;
+  }
+
+  .hero-subtitle {
+    font-size: 1rem;
+    max-width: 28ch;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-scroll-section {
+    height: 200vh;
+  }
+
+  .hero-title {
+    font-size: clamp(2rem, 14vw, 3.5rem);
+  }
+}
