@@ -10,6 +10,10 @@ function lerp(current: number, target: number, factor: number): number {
   return current + (target - current) * factor;
 }
 
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
+
 const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<any>(null);
@@ -25,7 +29,7 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
   const smoothScale = useRef(1);
   const smoothPosY = useRef(0);
   const smoothCamZ = useRef(20);
-  const smoothCamY = useRef(0.8);
+  const smoothCamY = useRef(0.5);
   const envRotRef = useRef(0);
 
   const initScene = useCallback(async () => {
@@ -49,7 +53,7 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.2;
+    renderer.toneMappingExposure = 1.4;
     rendererRef.current = renderer;
 
     // ── Scene ──
@@ -63,7 +67,7 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
       0.1,
       200
     );
-    camera.position.set(0, 0.8, 20);
+    camera.position.set(0, 0.5, 20);
     camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
 
@@ -80,46 +84,49 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     scene.environment = envMap;
     pmrem.dispose();
 
-    // ── Lights ──
-    scene.add(new THREE.AmbientLight(0xd8d0e8, 0.5));
+    // ── Lights — softer for glass transparency ──
+    scene.add(new THREE.AmbientLight(0xd8d0e8, 0.35));
 
-    const keyLight = new THREE.DirectionalLight(0xfff0e0, 2.8);
+    const keyLight = new THREE.DirectionalLight(0xfff0e0, 1.8);
     keyLight.position.set(5, 8, 6);
     scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight(0xd0d8ff, 1.0);
+    const fillLight = new THREE.DirectionalLight(0xd0d8ff, 0.6);
     fillLight.position.set(-5, 2, 4);
     scene.add(fillLight);
 
-    const rimLight = new THREE.DirectionalLight(0xffe8ff, 2.0);
+    const rimLight = new THREE.DirectionalLight(0xffe8ff, 1.2);
     rimLight.position.set(0, 4, -6);
     scene.add(rimLight);
 
-    const bounceLight = new THREE.DirectionalLight(0xffd8a0, 0.5);
+    const bounceLight = new THREE.DirectionalLight(0xffd8a0, 0.2);
     bounceLight.position.set(0, -5, 3);
     scene.add(bounceLight);
 
-    const specPoint = new THREE.PointLight(0xffffff, 40, 25);
+    const specPoint = new THREE.PointLight(0xffffff, 25, 25);
     specPoint.position.set(3, 4, 6);
     scene.add(specPoint);
     specLightRef.current = specPoint;
 
-    // ── Glass material ──
+    // ── Glass material — ultra-transparent like air.inc ──
+    // The key: very high transmission, near-zero roughness, thin,
+    // high env map intensity for reflections, subtle attenuation
     const glassMaterial = new THREE.MeshPhysicalMaterial({
-      transmission: 0.95,
-      roughness: 0.05,
-      metalness: 0,
-      ior: 1.5,
-      thickness: 1.5,
+      transmission: 0.98,         // almost fully transparent
+      roughness: 0.0,             // perfectly smooth glass
+      metalness: 0.0,
+      ior: 1.5,                   // real glass IOR
+      thickness: 0.4,             // thin — lets background show through
       specularIntensity: 1.0,
       specularColor: new THREE.Color(0xffffff),
-      envMapIntensity: 1.6,
+      envMapIntensity: 2.8,       // strong environment reflections
       clearcoat: 1.0,
-      clearcoatRoughness: 0.05,
-      attenuationColor: new THREE.Color('#E0D0F8'),
-      attenuationDistance: 3.5,
-      dispersion: 0.3,
+      clearcoatRoughness: 0.0,
+      attenuationColor: new THREE.Color('#f0e8ff'),  // very faint lilac tint
+      attenuationDistance: 12.0,   // large = less color absorption
+      dispersion: 0.35,           // rainbow edge refraction
       transparent: true,
+      opacity: 1,
       color: new THREE.Color(0xffffff),
       side: THREE.DoubleSide,
     });
@@ -130,7 +137,7 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
       'https://cdn.jsdelivr.net/npm/three@0.164.0/examples/fonts/helvetiker_bold.typeface.json',
       (font: any) => {
         const textSize = isMobile ? 0.9 : 1.4;
-        const extrudeDepth = isMobile ? 0.5 : 0.8;
+        const extrudeDepth = isMobile ? 0.35 : 0.55;
         const curves = isMobile ? 8 : 16;
         const bevSeg = isMobile ? 3 : 6;
 
@@ -140,8 +147,8 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
           height: extrudeDepth,
           curveSegments: curves,
           bevelEnabled: true,
-          bevelThickness: 0.15,
-          bevelSize: 0.08,
+          bevelThickness: 0.1,
+          bevelSize: 0.05,
           bevelOffset: 0,
           bevelSegments: bevSeg,
         });
@@ -163,8 +170,8 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
       }
     );
 
-    // ── Render loop with lerp ──
-    const LERP = 0.055;
+    // ── Render loop ──
+    const LERP = 0.045;
 
     function animate() {
       frameRef.current = requestAnimationFrame(animate);
@@ -173,40 +180,41 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
       smoothScroll.current = lerp(smoothScroll.current, t, LERP);
       const s = smoothScroll.current;
 
-      // Camera: gentle shift only
-      const targetCamZ = 20 - s * 2;
-      const targetCamY = 0.8 + s * 3.2;
+      // Camera: gentle shift
+      const targetCamZ = 20 - s * 4;
+      const targetCamY = 0.5 + s * 2.5;
       smoothCamZ.current = lerp(smoothCamZ.current, targetCamZ, LERP);
       smoothCamY.current = lerp(smoothCamY.current, targetCamY, LERP);
       camera.position.z = smoothCamZ.current;
       camera.position.y = smoothCamY.current;
-      camera.lookAt(0, smoothScroll.current * 3, 0);
+      camera.lookAt(0, s * 2.5, 0);
 
       if (textGroupRef.current) {
-        // 2 full rotations around Y axis
-        const targetRotY = s * Math.PI * 4;
+        // ── ROTATION: 2 full turns with easing (decelerates naturally) ──
+        const easedS = easeOutCubic(s);
+        const targetRotY = easedS * Math.PI * 4;
         smoothRotY.current = lerp(smoothRotY.current, targetRotY, LERP);
         textGroupRef.current.rotation.y = smoothRotY.current;
 
         // Slight X tilt
         textGroupRef.current.rotation.x = lerp(
           textGroupRef.current.rotation.x,
-          s * 0.1,
+          s * 0.08,
           LERP
         );
 
-        // Scale: 1 → 0.18 (shrink as you scroll)
-        const targetScale = 1 - s * 0.82;
-        smoothScale.current = lerp(smoothScale.current, targetScale, LERP);
+        // ── SCALE: 1.0 → 0.22 ──
+        const targetScale = 1 - s * 0.78;
+        smoothScale.current = lerp(smoothScale.current, Math.max(0.18, targetScale), LERP);
         textGroupRef.current.scale.setScalar(smoothScale.current);
 
-        // Position Y: move up to header area
-        const targetPosY = s * 5.8;
+        // ── POSITION Y: rise to header center ──
+        const targetPosY = s * 5.5;
         smoothPosY.current = lerp(smoothPosY.current, targetPosY, LERP);
         textGroupRef.current.position.y = smoothPosY.current;
       }
 
-      // Mouse → light
+      // Mouse → specular light
       if (specLightRef.current) {
         specLightRef.current.position.x = lerp(
           specLightRef.current.position.x, 3 + mouseRef.current.x * 3, 0.04
@@ -216,7 +224,8 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
         );
       }
 
-      envRotRef.current += 0.0006;
+      // Very slow env rotation for living reflections
+      envRotRef.current += 0.0003;
       if ((scene as any).backgroundRotation)
         (scene as any).backgroundRotation.y = envRotRef.current;
       if ((scene as any).environmentRotation)
