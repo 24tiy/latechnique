@@ -22,6 +22,8 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
   const scrollRef = useRef(0);
   const smoothScroll = useRef(0);
   const smoothRotY = useRef(0);
+  const smoothScale = useRef(1);
+  const smoothPosY = useRef(0);
   const smoothCamZ = useRef(20);
   const smoothCamY = useRef(0.8);
   const envRotRef = useRef(0);
@@ -132,7 +134,7 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
         const curves = isMobile ? 8 : 16;
         const bevSeg = isMobile ? 3 : 6;
 
-        const geo = new TextGeometry('La TechNique', {
+        const geo = new TextGeometry('LaTechNique', {
           font,
           size: textSize,
           height: extrudeDepth,
@@ -162,7 +164,7 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     );
 
     // ── Render loop with lerp ──
-    const LERP = 0.06;
+    const LERP = 0.055;
 
     function animate() {
       frameRef.current = requestAnimationFrame(animate);
@@ -171,23 +173,37 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
       smoothScroll.current = lerp(smoothScroll.current, t, LERP);
       const s = smoothScroll.current;
 
-      // Camera zoom: 20 → 6
-      smoothCamZ.current = lerp(smoothCamZ.current, 20 - s * 14, LERP);
-      smoothCamY.current = lerp(smoothCamY.current, 0.8 - s * 0.6, LERP);
+      // Camera: gentle shift only
+      const targetCamZ = 20 - s * 2;
+      const targetCamY = 0.8 + s * 3.2;
+      smoothCamZ.current = lerp(smoothCamZ.current, targetCamZ, LERP);
+      smoothCamY.current = lerp(smoothCamY.current, targetCamY, LERP);
       camera.position.z = smoothCamZ.current;
       camera.position.y = smoothCamY.current;
-      camera.lookAt(0, 0, 0);
+      camera.lookAt(0, smoothScroll.current * 3, 0);
 
-      // Text rotation Y
       if (textGroupRef.current) {
-        const targetRotY = s * Math.PI * 2.5;
+        // 2 full rotations around Y axis
+        const targetRotY = s * Math.PI * 4;
         smoothRotY.current = lerp(smoothRotY.current, targetRotY, LERP);
         textGroupRef.current.rotation.y = smoothRotY.current;
+
+        // Slight X tilt
         textGroupRef.current.rotation.x = lerp(
           textGroupRef.current.rotation.x,
-          s * 0.15 - 0.05,
+          s * 0.1,
           LERP
         );
+
+        // Scale: 1 → 0.18 (shrink as you scroll)
+        const targetScale = 1 - s * 0.82;
+        smoothScale.current = lerp(smoothScale.current, targetScale, LERP);
+        textGroupRef.current.scale.setScalar(smoothScale.current);
+
+        // Position Y: move up to header area
+        const targetPosY = s * 5.8;
+        smoothPosY.current = lerp(smoothPosY.current, targetPosY, LERP);
+        textGroupRef.current.position.y = smoothPosY.current;
       }
 
       // Mouse → light
