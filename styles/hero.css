@@ -1,9 +1,9 @@
 /* ═══════════════════════════════════════════
-   HERO — 3D GLASS (Three.js) + SCROLL BLUR
+   HERO — 3D GLASS + SCROLL ROTATION
    ═══════════════════════════════════════════ */
 
 .hero-scroll-section {
-  height: 300vh;
+  height: 350vh;
   position: relative;
 }
 
@@ -19,17 +19,14 @@
   background: #e8e4ee;
 }
 
-/* ── Three.js canvas ── */
 .glass-canvas {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   z-index: 1;
-  transition: filter 0.05s linear;
 }
 
-/* ── Loading state ── */
 .glass-loader {
   position: absolute;
   inset: 0;
@@ -47,7 +44,6 @@
   letter-spacing: 0.1em;
 }
 
-/* ── Overlay content ── */
 .hero-overlay {
   position: relative;
   z-index: 10;
@@ -56,7 +52,7 @@
   align-items: center;
   text-align: center;
   pointer-events: none;
-  margin-top: 18vh;
+  margin-top: 22vh;
 }
 
 .hero-sub {
@@ -65,12 +61,13 @@
   align-items: center;
   gap: 1.5rem;
   pointer-events: auto;
+  transition: opacity 0.1s linear, transform 0.1s linear;
 }
 
 .hero-subtitle {
   font-size: clamp(0.95rem, 1.8vw, 1.15rem);
   font-weight: 400;
-  color: rgba(60, 50, 80, 0.7);
+  color: rgba(60, 50, 80, 0.75);
   line-height: 1.6;
   letter-spacing: 0.02em;
   max-width: 34ch;
@@ -92,6 +89,7 @@
   align-items: center;
   gap: 0.6rem;
   z-index: 20;
+  transition: opacity 0.15s linear;
 }
 
 .hero-scroll-track {
@@ -126,13 +124,11 @@
   text-transform: uppercase;
 }
 
-/* ── Responsive ── */
 @media (max-width: 768px) {
-  .hero-scroll-section { height: 260vh; }
-  .hero-overlay { margin-top: 14vh; }
-  .hero-sub { gap: 1.2rem; }
+  .hero-scroll-section { height: 300vh; }
+  .hero-overlay { margin-top: 16vh; }
 }
 
 @media (max-width: 480px) {
-  .hero-scroll-section { height: 240vh; }
+  .hero-scroll-section { height: 280vh; }
 }
