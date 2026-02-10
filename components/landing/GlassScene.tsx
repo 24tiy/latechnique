@@ -21,11 +21,6 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
 
 /**
  * Chromatic Aberration + Vignette
- *
- * Simulates light dispersion through glass — different
- * wavelengths (R/G/B) refract at slightly different angles,
- * creating subtle rainbow fringing on bright edges.
- * Combined with a soft vignette for cinematic focus.
  */
 const ChromaVignetteShader = {
   uniforms: {
@@ -50,13 +45,13 @@ const ChromaVignetteShader = {
       vec2 center = vUv - 0.5;
       float dist = length(center);
 
-      // Chromatic aberration — stronger toward edges
+      // Chromatic aberration
       vec2 offset = center * dist * uChroma;
       float r = texture2D(tDiffuse, vUv + offset).r;
       float g = texture2D(tDiffuse, vUv).g;
       float b = texture2D(tDiffuse, vUv - offset).b;
 
-      // Vignette — subtle darkening at corners
+      // Vignette
       float vig = 1.0 - dist * dist * uVignette;
       vig = clamp(vig, 0.0, 1.0);
       vig = smoothstep(0.0, 1.0, vig);
@@ -140,12 +135,7 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     cameraRef.current = camera;
 
     /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       HDR-QUALITY ENVIRONMENT MAP
-
-       Glass looks as good as its environment.
-       A flat gradient → flat glass.
-       Rich contrast with warm/cool interplay
-       → alive, sparkling glass.
+       HDR ENVIRONMENT MAP
        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
     const skyCanvas = buildHDRSkyTexture();
     const skyTex = new THREE.CanvasTexture(skyCanvas);
@@ -161,47 +151,35 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     pmrem.dispose();
 
     /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       LIGHTING — 8-light cinematic rig
-
-       Glass needs LOTS of light sources to create
-       the complex specular highlights that make it
-       look real. Each light creates a unique reflection
-       on different faces of the 3D text.
+       LIGHTING
        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
     scene.add(new THREE.AmbientLight(0xd8d0e8, 0.25));
 
-    // Key — warm, high right (main shadow caster)
     const key = new THREE.DirectionalLight(0xfff4e0, 2.5);
     key.position.set(7, 12, 5);
     scene.add(key);
 
-    // Fill — cool, left (softens shadows)
     const fill = new THREE.DirectionalLight(0xc0d0ff, 0.7);
     fill.position.set(-7, 3, 5);
     scene.add(fill);
 
-    // Rim — purple, behind (edge glow)
     const rim = new THREE.DirectionalLight(0xd0b8ff, 1.8);
     rim.position.set(0, 6, -10);
     scene.add(rim);
 
-    // Bounce — warm from below (ground reflection sim)
     const bounce = new THREE.DirectionalLight(0xffd8b0, 0.5);
     bounce.position.set(0, -6, 4);
     scene.add(bounce);
 
-    // Kicker — side accent
     const kicker = new THREE.DirectionalLight(0xffe0f0, 0.8);
     kicker.position.set(-8, 8, -3);
     scene.add(kicker);
 
-    // Mouse-tracking specular highlight
     const spec = new THREE.PointLight(0xffffff, 50, 40);
     spec.position.set(3, 5, 8);
     scene.add(spec);
     specLightRef.current = spec;
 
-    // Sparkle points — catch different glass facets
     const sp1 = new THREE.PointLight(0xc8b8ff, 18, 22);
     sp1.position.set(-5, 4, 4);
     scene.add(sp1);
@@ -211,46 +189,27 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     scene.add(sp2);
 
     /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       GLASS MATERIAL — crystal clear, see-through
-
-       The balance: you must see BOTH the background
-       through the glass AND reflections on its surface.
-
-       Key: transmission high, envMapIntensity moderate.
-       If envMap is too strong, reflections overpower
-       the see-through effect. If too weak, it looks
-       like clear plastic instead of glass.
+       GLASS MATERIAL
        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
     const glass = new THREE.MeshPhysicalMaterial({
-      // TRANSMISSION: see-through + refraction
       transmission: 0.95,
       roughness: 0.02,
       metalness: 0.0,
-      ior: 1.52,         // standard glass
-      thickness: 0.5,     // moderate refraction depth
-
-      // REFLECTIONS: enough to see environment, not so much to block view
+      ior: 1.52,
+      thickness: 0.5,
       envMapIntensity: 3.0,
-
-      // SPECULAR: bright highlights on edges
       specularIntensity: 1.5,
       specularColor: new THREE.Color(0xffffff),
-
-      // CLEARCOAT: second reflection layer (like polished glass surface)
       clearcoat: 1.0,
       clearcoatRoughness: 0.01,
-
-      // ATTENUATION: light gets subtly tinted passing through
-      // Faint lavender = premium crystal feel
       attenuationColor: new THREE.Color('#e8e0fa'),
       attenuationDistance: 10.0,
-
       color: new THREE.Color(0xffffff),
       side: THREE.FrontSide,
     });
 
     /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       3D TEXT — high polygon count for smooth curves
+       3D TEXT
        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
     const fontLoader = new FontLoader();
     fontLoader.load(
@@ -258,8 +217,8 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
       (font: any) => {
         const sz = mobile ? 0.85 : 1.35;
         const depth = mobile ? 0.45 : 0.7;
-        const curveSegs = mobile ? 12 : 24;   // smoother curves
-        const bevelSegs = mobile ? 4 : 10;     // smoother bevels
+        const curveSegs = mobile ? 12 : 24;
+        const bevelSegs = mobile ? 4 : 10;
 
         const geo = new TextGeometry('LaTechNique', {
           font,
@@ -291,29 +250,19 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     );
 
     /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       POST-PROCESSING PIPELINE
-
-       1. RenderPass     — base scene with glass
-       2. UnrealBloom     — soft glow on specular highlights
-       3. ChromaVignette  — chromatic aberration + vignette
-
-       This pipeline turns "decent 3D" into "cinematic".
+       POST-PROCESSING
        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
     const composer = new EffectComposer(renderer);
-
-    // Pass 1: render scene
     composer.addPass(new RenderPass(scene, camera));
 
-    // Pass 2: bloom — soft glow on glass highlights
     const bloom = new UnrealBloomPass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),
-      0.3,    // strength — subtle, elegant
-      0.5,    // radius — soft spread
-      0.75    // threshold — only bright highlights
+      0.3,
+      0.5,
+      0.75
     );
     composer.addPass(bloom);
 
-    // Pass 3: chromatic aberration + vignette
     const chromaPass = new ShaderPass(ChromaVignetteShader);
     chromaPass.uniforms.uChroma.value = mobile ? 0.002 : 0.004;
     chromaPass.uniforms.uVignette.value = 0.3;
@@ -322,24 +271,16 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     composerRef.current = composer;
 
     /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       HELPER: screen-to-world projection
-
-       Given a screen Y position (in NDC), compute
-       the corresponding world Y at z=0 plane.
-       Used to position the text exactly at header center.
+       HELPER FUNCTIONS
        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
     const _v1 = new THREE.Vector3();
     const _v2 = new THREE.Vector3();
     const _v3 = new THREE.Vector3();
 
-    function getWorldYAtScreen(cam: THREE.PerspectiveCamera, ndcY: number): number {
-      // Near plane point
+    function getWorldYAtScreen(cam: any, ndcY: number): number {
       _v1.set(0, ndcY, -1).unproject(cam);
-      // Far plane point
       _v2.set(0, ndcY, 1).unproject(cam);
-      // Ray direction
       _v3.subVectors(_v2, _v1).normalize();
-      // Intersect z=0 plane
       const t = -_v1.z / _v3.z;
       return _v1.y + _v3.y * t;
     }
@@ -348,12 +289,11 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
        ANIMATION LOOP
        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
     const LERP_SPEED = 0.05;
-    const ANIM_END = 0.65; // Animation completes at 65% scroll (subtitle appears at 65%)
+    const ANIM_END = 0.65;
 
     function animate() {
       frameRef.current = requestAnimationFrame(animate);
 
-      // ── Smooth scroll ──
       smoothScrollRef.current = lerp(
         smoothScrollRef.current,
         scrollRef.current,
@@ -361,13 +301,9 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
       );
       const s = smoothScrollRef.current;
 
-      // ── Animation timeline ──
-      // 0 → ANIM_END: text rotates, shrinks, rises
-      // ANIM_END → 1: text holds position in header
       const animT = Math.min(1, s / ANIM_END);
       const eased = smoothstep(0, 1, animT);
 
-      // ── Camera ──
       const targetCamZ = 20 - s * 5;
       const targetCamY = 0.3 + s * 3.5;
       const targetLookY = s * 3.5;
@@ -379,27 +315,16 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
 
       if (textGroupRef.current) {
         const group = textGroupRef.current;
-
-        // ── ROTATION: exactly 2 full turns ──
         group.rotation.y = eased * Math.PI * 4;
-
-        // Subtle X tilt during rotation (peaks at midpoint)
         group.rotation.x = Math.sin(animT * Math.PI) * 0.1;
-
-        // ── SCALE: 1 → 0.18 ──
         group.scale.setScalar(Math.max(0.18, 1 - eased * 0.82));
 
-        // ── POSITION: rise to header center ──
-        // Dynamically compute where the header center is in 3D space
         camera.updateMatrixWorld();
-        const headerNdcY = 1 - 2 * (36 / window.innerHeight); // 36px = center of 72px header
+        const headerNdcY = 1 - 2 * (36 / window.innerHeight);
         const headerWorldY = getWorldYAtScreen(camera, headerNdcY);
-
-        // Interpolate from center (0) to header position
         group.position.y = lerp(0, headerWorldY, eased);
       }
 
-      // ── Mouse → specular light ──
       if (specLightRef.current) {
         specLightRef.current.position.x = lerp(
           specLightRef.current.position.x,
@@ -413,19 +338,16 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
         );
       }
 
-      // ── Render through post-processing pipeline ──
       composer.render();
     }
 
     animate();
   }, []);
 
-  /* ── Sync scroll prop → ref ── */
   useEffect(() => {
     scrollRef.current = scrollProgress;
   }, [scrollProgress]);
 
-  /* ── Mouse tracking ── */
   useEffect(() => {
     const fn = (e: MouseEvent) => {
       mouseRef.current.x = (e.clientX / window.innerWidth - 0.5) * 2;
@@ -435,7 +357,6 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     return () => window.removeEventListener('mousemove', fn);
   }, []);
 
-  /* ── Resize handler ── */
   useEffect(() => {
     const fn = () => {
       if (!rendererRef.current || !cameraRef.current || !composerRef.current) return;
@@ -450,7 +371,6 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     return () => window.removeEventListener('resize', fn);
   }, []);
 
-  /* ── Init & Cleanup ── */
   useEffect(() => {
     initScene();
     return () => {
@@ -463,20 +383,7 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
 };
 
 /* ═══════════════════════════════════════════════════════════
-   HDR-QUALITY ENVIRONMENT TEXTURE
-
-   THE most important factor for glass quality.
-
-   Real glass is a mirror + lens: it reflects and refracts
-   whatever surrounds it. A boring environment = boring glass.
-   A rich, contrasty, colorful environment = glass that
-   sparkles, refracts rainbows, and feels alive.
-
-   This creates a sunset sky with:
-   - Deep purple zenith → warm peach horizon → amber ground
-   - Structured cloud layers at different altitudes
-   - Warm sun glow for directional light
-   - Cool/warm contrast for color variety in reflections
+   HDR SKY TEXTURE
    ═══════════════════════════════════════════════════════════ */
 function buildHDRSkyTexture(): HTMLCanvasElement {
   const w = 2048;
@@ -486,7 +393,6 @@ function buildHDRSkyTexture(): HTMLCanvasElement {
   c.height = h;
   const ctx = c.getContext('2d')!;
 
-  /* ── Base gradient: purple → peach → amber ── */
   const sky = ctx.createLinearGradient(0, 0, 0, h);
   sky.addColorStop(0.0,  '#3D3280');
   sky.addColorStop(0.06, '#4E4298');
@@ -506,7 +412,6 @@ function buildHDRSkyTexture(): HTMLCanvasElement {
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, w, h);
 
-  /* ── Warm horizon glow band ── */
   const horizon = ctx.createLinearGradient(0, h * 0.40, 0, h * 0.64);
   horizon.addColorStop(0.0, 'rgba(255,210,160,0)');
   horizon.addColorStop(0.25, 'rgba(255,215,175,0.12)');
@@ -516,7 +421,6 @@ function buildHDRSkyTexture(): HTMLCanvasElement {
   ctx.fillStyle = horizon;
   ctx.fillRect(0, 0, w, h);
 
-  /* ── Sun glow (off-center for asymmetric reflections) ── */
   ctx.globalCompositeOperation = 'screen';
   const sun = ctx.createRadialGradient(
     w * 0.3, h * 0.50, 0,
@@ -529,7 +433,6 @@ function buildHDRSkyTexture(): HTMLCanvasElement {
   ctx.fillStyle = sun;
   ctx.fillRect(0, 0, w, h);
 
-  /* ── Secondary glow on opposite side (fill light) ── */
   const fill = ctx.createRadialGradient(
     w * 0.75, h * 0.45, 0,
     w * 0.75, h * 0.45, w * 0.18
@@ -540,7 +443,6 @@ function buildHDRSkyTexture(): HTMLCanvasElement {
   ctx.fillStyle = fill;
   ctx.fillRect(0, 0, w, h);
 
-  /* ── Cloud layers (tinted, never white) ── */
   const S = [
     0.12, 0.34, 0.56, 0.78, 0.91, 0.23, 0.45, 0.67, 0.89, 0.01,
     0.38, 0.72, 0.15, 0.58, 0.93, 0.27, 0.61, 0.84, 0.49, 0.06,
@@ -548,7 +450,6 @@ function buildHDRSkyTexture(): HTMLCanvasElement {
     0.55, 0.82, 0.11, 0.47, 0.69, 0.95, 0.36, 0.63, 0.08, 0.71,
   ];
 
-  // High altitude: large, faint, lavender
   for (let i = 0; i < 12; i++) {
     const cx = S[i % 40] * w;
     const cy = h * 0.08 + S[(i + 7) % 40] * h * 0.35;
@@ -565,7 +466,6 @@ function buildHDRSkyTexture(): HTMLCanvasElement {
     ctx.fill();
   }
 
-  // Mid altitude: medium, warmer tint
   for (let i = 12; i < 28; i++) {
     const cx = S[i % 40] * w;
     const cy = h * 0.20 + S[(i + 3) % 40] * h * 0.35;
@@ -582,7 +482,6 @@ function buildHDRSkyTexture(): HTMLCanvasElement {
     ctx.fill();
   }
 
-  // Low altitude: small, warm tinted (near horizon)
   for (let i = 28; i < 40; i++) {
     const cx = S[i % 40] * w;
     const cy = h * 0.38 + S[(i + 5) % 40] * h * 0.18;
@@ -599,7 +498,6 @@ function buildHDRSkyTexture(): HTMLCanvasElement {
     ctx.fill();
   }
 
-  /* ── Deepen the zenith (more contrast = better reflections) ── */
   ctx.globalCompositeOperation = 'multiply';
   const zenith = ctx.createLinearGradient(0, 0, 0, h * 0.25);
   zenith.addColorStop(0.0, 'rgba(55,40,110,0.20)');
@@ -607,7 +505,6 @@ function buildHDRSkyTexture(): HTMLCanvasElement {
   ctx.fillStyle = zenith;
   ctx.fillRect(0, 0, w, h * 0.25);
 
-  /* ── Warm ground bounce ── */
   ctx.globalCompositeOperation = 'screen';
   const ground = ctx.createLinearGradient(0, h * 0.80, 0, h);
   ground.addColorStop(0.0, 'rgba(200,155,90,0)');
