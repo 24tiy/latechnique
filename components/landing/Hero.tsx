@@ -18,6 +18,7 @@ export const Hero: React.FC = () => {
   const subRef = useRef<HTMLDivElement>(null);
   const hintRef = useRef<HTMLDivElement>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [isSticky, setIsSticky] = useState(false);
 
   const handleScroll = useCallback(() => {
     const section = sectionRef.current;
@@ -30,6 +31,9 @@ export const Hero: React.FC = () => {
     const raw = -rect.top / total;
     const progress = Math.max(0, Math.min(1, raw));
     setScrollProgress(progress);
+
+    // Check if text should be sticky (after 65% scroll)
+    setIsSticky(progress >= 0.65);
 
     // Subtitle appears at ~70% scroll
     if (subRef.current) {
@@ -53,7 +57,21 @@ export const Hero: React.FC = () => {
   return (
     <section ref={sectionRef} className="hero-scroll-section">
       <div className="hero-sticky">
-        <GlassScene scrollProgress={scrollProgress} />
+        {/* Glass text canvas — becomes sticky when fully docked */}
+        <div 
+          className="glass-canvas-wrapper" 
+          style={{
+            position: isSticky ? 'fixed' : 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 'var(--header-height)',
+            zIndex: isSticky ? 100 : 1,
+            pointerEvents: 'none',
+          }}
+        >
+          <GlassScene scrollProgress={scrollProgress} />
+        </div>
 
         <div className="hero-overlay">
           <div className="hero-sub" ref={subRef} style={{ opacity: 0 }}>
