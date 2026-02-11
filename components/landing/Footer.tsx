@@ -1,52 +1,23 @@
+'use client';
+
 import React from 'react';
-import Link from 'next/link';
+import { GrassFooter } from './GrassFooter';
 
 export const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="border-t border-black/10 py-8">
-      <div className="container">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-          {/* Brand */}
-          <div className="text-center md:text-left">
-            <Link href="/" className="inline-block mb-2">
-              <span className="text-lg font-bold italic">LaTechNique</span>
-            </Link>
-            <p className="body-small text-muted">
-              Платформа аналитики социальных сетей
-            </p>
-          </div>
-
-          {/* Links */}
-          <div className="flex items-center gap-8">
-            <Link
-              href="/privacy"
-              className="body-small text-muted hover:text-black transition-colors"
-            >
-              Конфиденциальность
-            </Link>
-            <Link
-              href="/terms"
-              className="body-small text-muted hover:text-black transition-colors"
-            >
-              Условия
-            </Link>
-            <a
-              href="https://t.me/latechnique_support"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="body-small text-muted hover:text-black transition-colors"
-            >
-              Telegram
-            </a>
-          </div>
-
-          {/* Copyright */}
-          <p className="body-small text-muted">
-            © {currentYear} LaTechNique
-          </p>
-        </div>
+    <footer style={{ background: 'transparent', position: 'relative' }}>
+      <GrassFooter />
+      <div
+        className="text-center py-4"
+        style={{
+          background: 'linear-gradient(180deg, rgba(10,40,10,0.85) 0%, rgba(5,25,5,0.95) 100%)',
+        }}
+      >
+        <p className="body-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
+          © {currentYear} LaTechNique
+        </p>
       </div>
     </footer>
   );
