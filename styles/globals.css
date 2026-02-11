@@ -39,10 +39,31 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
-  background: var(--bg);
-  color: var(--fg);
+  color: #fff;
   line-height: 1.5;
   overflow-x: hidden;
+  min-height: 100vh;
+
+  /* SKY GRADIENT — covers entire site */
+  background: linear-gradient(
+    180deg,
+    #0f1b3d 0%,
+    #162654 5%,
+    #1a3068 10%,
+    #1f3d80 18%,
+    #254a96 26%,
+    #2d5aaa 34%,
+    #3568b8 42%,
+    #4078c4 50%,
+    #5090d0 58%,
+    #62a4da 66%,
+    #78b8e2 74%,
+    #92cce8 82%,
+    #b0dcf0 90%,
+    #c8eaf5 95%,
+    #daf2fa 100%
+  );
+  background-attachment: fixed;
 }
 
 /* ========================================
@@ -50,13 +71,13 @@ body {
    ======================================== */
 
 ::selection {
-  background: rgba(var(--accent-rgb), 0.2);
-  color: var(--fg);
+  background: rgba(76, 150, 247, 0.3);
+  color: #fff;
 }
 
 ::-moz-selection {
-  background: rgba(var(--accent-rgb), 0.2);
-  color: var(--fg);
+  background: rgba(76, 150, 247, 0.3);
+  color: #fff;
 }
 
 /* ========================================
@@ -69,16 +90,16 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg);
+  background: rgba(15, 27, 61, 0.5);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(var(--text-rgb), 0.2);
+  background: rgba(255, 255, 255, 0.2);
   border-radius: var(--radius-full);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--text-rgb), 0.3);
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* ========================================
@@ -86,7 +107,7 @@ body {
    ======================================== */
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid rgba(76, 150, 247, 0.6);
   outline-offset: 2px;
 }
 
@@ -95,7 +116,7 @@ body {
    ======================================== */
 
 a {
-  color: inherit;
+  color: #fff;
   text-decoration: none;
   transition: opacity var(--duration-fast) var(--ease);
 }
@@ -131,14 +152,10 @@ ol {
    HEADINGS
    ======================================== */
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
+h1, h2, h3, h4, h5, h6 {
   font-weight: inherit;
   line-height: inherit;
+  color: #fff;
 }
 
 /* ========================================
