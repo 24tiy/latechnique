@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card } from '../design-system/Card';
+import { ScrollReveal } from '../design-system/ScrollReveal';
 import {
   Upload,
   BarChart3,
@@ -53,44 +54,45 @@ const features: Feature[] = [
 
 export const Features: React.FC = () => {
   return (
-    <section id="features" className="section">
+    <section id="features" className="section" style={{ background: 'transparent' }}>
       <div className="container">
-        {/* Section Header */}
-        <div className="text-center mb-16">
-          <h2 className="h2 mb-4">Всё что нужно для анализа</h2>
-          <p className="lead max-w-2xl mx-auto text-muted">
-            Мощные инструменты для работы со статистикой социальных сетей
-          </p>
-        </div>
+        <ScrollReveal>
+          {/* Section Header */}
+          <div className="text-center mb-16">
+            <h2 className="h2 mb-4">Всё что нужно для анализа</h2>
+            <p className="lead max-w-2xl mx-auto text-muted">
+              Мощные инструменты для работы со статистикой социальных сетей
+            </p>
+          </div>
 
-        {/* Features Grid */}
-        <div className="grid-container">
-          {features.map((feature, index) => (
-            <div
-              key={feature.title}
-              className="col-span-12 md:col-span-6 lg:col-span-4"
-              style={{
-                animation: 'slideUp var(--duration-medium) var(--ease) backwards',
-                animationDelay: `${index * 0.1}s`,
-              }}
-            >
-              <Card hover padding="lg" className="h-full">
-                <div className="flex flex-col gap-4">
-                  {/* Icon */}
-                  <div className="w-12 h-12 rounded-lg bg-haze flex items-center justify-center">
-                    <feature.icon className="w-6 h-6" />
+          {/* Features Grid */}
+          <div className="grid-container">
+            {features.map((feature) => (
+              <div
+                key={feature.title}
+                className="col-span-12 md:col-span-6 lg:col-span-4 reveal-child"
+              >
+                <Card hover padding="lg" className="h-full">
+                  <div className="flex flex-col gap-4">
+                    {/* Icon */}
+                    <div
+                      className="w-12 h-12 rounded-lg flex items-center justify-center"
+                      style={{ background: 'rgba(255,255,255,0.1)' }}
+                    >
+                      <feature.icon className="w-6 h-6 text-white" />
+                    </div>
+
+                    {/* Title */}
+                    <h3 className="h4">{feature.title}</h3>
+
+                    {/* Description */}
+                    <p className="body-small text-muted">{feature.description}</p>
                   </div>
-
-                  {/* Title */}
-                  <h3 className="h4">{feature.title}</h3>
-
-                  {/* Description */}
-                  <p className="body-small text-muted">{feature.description}</p>
-                </div>
-              </Card>
-            </div>
-          ))}
-        </div>
+                </Card>
+              </div>
+            ))}
+          </div>
+        </ScrollReveal>
       </div>
     </section>
   );
