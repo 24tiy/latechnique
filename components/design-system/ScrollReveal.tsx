@@ -5,14 +5,14 @@ import { cn } from '@/lib/utils';
 
 interface ScrollRevealProps {
   children: React.ReactNode;
-  className?: string; 
+  className?: string;
   threshold?: number;
 }
 
 export const ScrollReveal: React.FC<ScrollRevealProps> = ({
   children,
   className,
-  threshold = 0.15,
+  threshold = 0.1,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
@@ -27,7 +27,7 @@ export const ScrollReveal: React.FC<ScrollRevealProps> = ({
       },
       {
         threshold,
-        rootMargin: '0px 0px -50px 0px',
+        rootMargin: '0px 0px -30px 0px',
       }
     );
 
