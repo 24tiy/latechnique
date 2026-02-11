@@ -11,6 +11,7 @@ interface Blade {
   hue: number;
   lightness: number;
   saturation: number;
+  bendFactor: number;
 }
 
 export const GrassFooter: React.FC = () => {
@@ -21,23 +22,24 @@ export const GrassFooter: React.FC = () => {
   const lastTimeRef = useRef(0);
 
   const initBlades = useCallback((width: number) => {
-    // Dense grass: ~1 blade per 1.5px
-    const count = Math.floor(width / 1.5);
+    // Ultra-dense grass like Zelda: ~1 blade per 0.8px
+    const count = Math.floor(width / 0.8);
     const blades: Blade[] = [];
 
     for (let i = 0; i < count; i++) {
-      const x = (i / count) * width + (Math.random() - 0.5) * 3;
-      // Taller grass blades: 60-320px
-      const height = 60 + Math.random() * 260;
+      const x = (i / count) * width + (Math.random() - 0.5) * 2;
+      // Shorter, meadow-like grass: 40-120px
+      const height = 40 + Math.random() * 80;
       blades.push({
         x,
         height,
-        width: 1.0 + Math.random() * 2.8,
+        width: 1.5 + Math.random() * 2.5,
         phase: Math.random() * Math.PI * 2,
-        speed: 0.6 + Math.random() * 1.0,
-        hue: 95 + Math.random() * 45,        // 95-140: yellow-green to green
-        saturation: 50 + Math.random() * 25,  // 50-75%
-        lightness: 15 + Math.random() * 28,   // 15-43%
+        speed: 0.3 + Math.random() * 0.4, // Slower wind
+        hue: 85 + Math.random() * 50,        // 85-135: vibrant greens
+        saturation: 55 + Math.random() * 30,  // 55-85%
+        lightness: 25 + Math.random() * 25,   // 25-50%
+        bendFactor: 0.7 + Math.random() * 0.6, // How much it bends
       });
     }
 
@@ -63,10 +65,10 @@ export const GrassFooter: React.FC = () => {
     for (let i = 0; i < blades.length; i++) {
       const b = blades[i];
 
-      // Wind: 3 layered sine waves for organic sway
-      const sway1 = Math.sin(t * b.speed + b.phase) * 14;
-      const sway2 = Math.sin(t * b.speed * 0.6 + b.phase * 1.4) * 7;
-      const sway3 = Math.cos(t * 0.35 + b.x * 0.008) * 5;
+      // Gentle, slow wind sway (Zelda-like)
+      const sway1 = Math.sin(t * b.speed * 0.5 + b.phase) * 8 * b.bendFactor;
+      const sway2 = Math.sin(t * b.speed * 0.3 + b.phase * 1.3) * 4 * b.bendFactor;
+      const sway3 = Math.cos(t * 0.2 + b.x * 0.01) * 3 * b.bendFactor;
       const totalSway = sway1 + sway2 + sway3;
 
       const baseX = b.x;
@@ -74,33 +76,62 @@ export const GrassFooter: React.FC = () => {
       const tipX = baseX + totalSway;
       const tipY = h - b.height;
 
-      // Control point: creates a natural arc/bend
-      const cpX = baseX + totalSway * 0.55;
-      const cpY = h - b.height * 0.5;
+      // Curved blade shape with 2 control points for natural bend
+      const cp1X = baseX + totalSway * 0.3;
+      const cp1Y = h - b.height * 0.3;
+      const cp2X = baseX + totalSway * 0.7;
+      const cp2Y = h - b.height * 0.7;
 
       ctx.beginPath();
       ctx.moveTo(baseX - b.width / 2, baseY);
-      ctx.quadraticCurveTo(cpX - b.width * 0.25, cpY, tipX, tipY);
-      ctx.quadraticCurveTo(cpX + b.width * 0.25, cpY, baseX + b.width / 2, baseY);
+      
+      // Draw one side with cubic bezier for smooth curve
+      ctx.bezierCurveTo(
+        cp1X - b.width * 0.2, cp1Y,
+        cp2X - b.width * 0.1, cp2Y,
+        tipX, tipY
+      );
+      
+      // Draw other side back down
+      ctx.bezierCurveTo(
+        cp2X + b.width * 0.1, cp2Y,
+        cp1X + b.width * 0.2, cp1Y,
+        baseX + b.width / 2, baseY
+      );
+      
       ctx.closePath();
 
-      // Gradient: dark roots → vibrant middle → lighter tip
+      // Rich gradient: dark earthy roots → vibrant green → lighter tip
       const grad = ctx.createLinearGradient(baseX, baseY, tipX, tipY);
-      const darkL = Math.max(6, b.lightness - 14);
-      const brightL = Math.min(55, b.lightness + 12);
-      grad.addColorStop(0, `hsl(${b.hue + 5}, ${b.saturation - 10}%, ${darkL}%)`);
-      grad.addColorStop(0.3, `hsl(${b.hue}, ${b.saturation}%, ${b.lightness}%)`);
-      grad.addColorStop(0.7, `hsl(${b.hue - 3}, ${b.saturation + 5}%, ${b.lightness + 5}%)`);
-      grad.addColorStop(1, `hsl(${b.hue - 8}, ${b.saturation - 5}%, ${brightL}%)`);
+      const darkL = Math.max(12, b.lightness - 18);
+      const midL = b.lightness;
+      const brightL = Math.min(60, b.lightness + 15);
+      
+      grad.addColorStop(0, `hsl(${b.hue + 8}, ${b.saturation - 15}%, ${darkL}%)`);
+      grad.addColorStop(0.2, `hsl(${b.hue + 5}, ${b.saturation - 5}%, ${midL - 5}%)`);
+      grad.addColorStop(0.5, `hsl(${b.hue}, ${b.saturation}%, ${midL}%)`);
+      grad.addColorStop(0.8, `hsl(${b.hue - 5}, ${b.saturation + 10}%, ${midL + 8}%)`);
+      grad.addColorStop(1, `hsl(${b.hue - 10}, ${b.saturation + 5}%, ${brightL}%)`);
 
       ctx.fillStyle = grad;
       ctx.fill();
+
+      // Add subtle highlight on random blades
+      if (Math.random() > 0.85) {
+        ctx.beginPath();
+        ctx.moveTo(tipX - b.width * 0.15, tipY);
+        ctx.lineTo(tipX, tipY - 3);
+        ctx.lineTo(tipX + b.width * 0.15, tipY);
+        ctx.strokeStyle = `hsla(${b.hue - 10}, 70%, ${brightL + 10}%, 0.3)`;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
     }
   }, []);
 
   const animate = useCallback(() => {
     const now = performance.now();
-    const dt = (now - lastTimeRef.current) / 1000;
+    const dt = (now - lastFrameRef.current) / 1000;
     lastTimeRef.current = now;
     timeRef.current += dt;
     draw();
