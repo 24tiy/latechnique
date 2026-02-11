@@ -136,7 +136,45 @@
 .card-padding-lg { padding: var(--spacing-3xl); }
 
 /* ========================================
-   ANIMATED BORDER
+   PRICING CARDS — consistent look
+   ======================================== */
+
+/* Featured card — subtle elevated glass instead of heavy AnimatedBorder */
+.card-featured {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(76, 150, 247, 0.25);
+  box-shadow: 0 0 40px rgba(76, 150, 247, 0.08);
+}
+
+.pricing-card-highlighted {
+  position: relative;
+  border-radius: var(--radius-lg);
+  height: 100%;
+}
+
+/* Gentle pulsing glow on the highlighted card border */
+.pricing-card-highlighted::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(
+    135deg,
+    rgba(76, 150, 247, 0.35),
+    rgba(139, 92, 246, 0.25),
+    rgba(99, 102, 241, 0.35)
+  );
+  z-index: -1;
+  animation: glowPulse 4s ease-in-out infinite;
+}
+
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.9; }
+}
+
+/* ========================================
+   ANIMATED BORDER (kept for other uses)
    ======================================== */
 
 .animated-border {
@@ -249,7 +287,6 @@
   transform: translateY(50px);
 }
 
-/* Stagger children with smooth easing */
 .scroll-reveal .reveal-child {
   opacity: 0;
   transform: translateY(30px);
