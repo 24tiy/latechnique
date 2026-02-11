@@ -4,6 +4,7 @@ import React from 'react';
 import { Card } from '../design-system/Card';
 import { AnimatedBorder } from '../design-system/AnimatedBorder';
 import { Button } from '../design-system/Button';
+import { ScrollReveal } from '../design-system/ScrollReveal';
 import { Check } from 'lucide-react';
 import type { PricingTier } from '@/types';
 
@@ -49,48 +50,46 @@ const pricingTiers: PricingTier[] = [
 
 export const Pricing: React.FC = () => {
   return (
-    <section id="pricing" className="section bg-haze">
+    <section id="pricing" className="section" style={{ background: 'transparent' }}>
       <div className="container">
-        {/* Section Header */}
-        <div className="text-center mb-16">
-          <h2 className="h2 mb-4">Прозрачное ценообразование</h2>
-          <p className="lead max-w-2xl mx-auto text-muted">
-            Выберите план, который подходит именно вам
-          </p>
-        </div>
+        <ScrollReveal>
+          {/* Section Header */}
+          <div className="text-center mb-16">
+            <h2 className="h2 mb-4">Прозрачное ценообразование</h2>
+            <p className="lead max-w-2xl mx-auto text-muted">
+              Выберите план, который подходит именно вам
+            </p>
+          </div>
 
-        {/* Pricing Grid */}
-        <div className="grid-container">
-          {pricingTiers.map((tier, index) => (
-            <div
-              key={tier.name}
-              className="col-span-12 md:col-span-6 lg:col-span-4"
-              style={{
-                animation: 'slideUp var(--duration-medium) var(--ease) backwards',
-                animationDelay: `${index * 0.1}s`,
-              }}
-            >
-              {tier.highlighted ? (
-                <AnimatedBorder>
-                  <Card padding="lg" className="h-full bg-white">
-                    <PricingCard tier={tier} highlighted />
+          {/* Pricing Grid */}
+          <div className="grid-container">
+            {pricingTiers.map((tier) => (
+              <div
+                key={tier.name}
+                className="col-span-12 md:col-span-6 lg:col-span-4 reveal-child"
+              >
+                {tier.highlighted ? (
+                  <AnimatedBorder>
+                    <Card padding="lg" className="h-full">
+                      <PricingCard tier={tier} highlighted />
+                    </Card>
+                  </AnimatedBorder>
+                ) : (
+                  <Card padding="lg" className="h-full">
+                    <PricingCard tier={tier} />
                   </Card>
-                </AnimatedBorder>
-              ) : (
-                <Card padding="lg" className="h-full">
-                  <PricingCard tier={tier} />
-                </Card>
-              )}
-            </div>
-          ))}
-        </div>
+                )}
+              </div>
+            ))}
+          </div>
 
-        {/* Bottom Note */}
-        <div className="text-center mt-12">
-          <p className="body-small text-muted">
-            Все цены указаны с учетом НДС. Безопасная оплата через ЮКасса.
-          </p>
-        </div>
+          {/* Bottom Note */}
+          <div className="text-center mt-12">
+            <p className="body-small text-muted">
+              Все цены указаны с учетом НДС. Безопасная оплата через ЮКасса.
+            </p>
+          </div>
+        </ScrollReveal>
       </div>
     </section>
   );
@@ -109,9 +108,9 @@ const PricingCard: React.FC<PricingCardProps> = ({ tier, highlighted }) => {
         <h3 className="h4 mb-2">{tier.name}</h3>
         <p className="body-small text-muted mb-4">{tier.description}</p>
         <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-bold">{tier.price}</span>
+          <span className="text-4xl font-bold text-white">{tier.price}</span>
           {tier.price !== 'Скоро' && tier.price !== '0₽' && (
-            <span className="text-sm text-muted">/ссылка</span>
+            <span className="text-sm text-white/60">/ссылка</span>
           )}
         </div>
       </div>
@@ -120,10 +119,13 @@ const PricingCard: React.FC<PricingCardProps> = ({ tier, highlighted }) => {
       <ul className="space-y-3 mb-8 flex-grow">
         {tier.features.map((feature) => (
           <li key={feature} className="flex items-start gap-3">
-            <div className="w-5 h-5 rounded-full bg-canopy/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <Check className="w-3 h-3 text-canopy" />
+            <div
+              className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+              style={{ background: 'rgba(16,185,129,0.2)' }}
+            >
+              <Check className="w-3 h-3" style={{ color: '#10b981' }} />
             </div>
-            <span className="body-small">{feature}</span>
+            <span className="body-small text-white">{feature}</span>
           </li>
         ))}
       </ul>
