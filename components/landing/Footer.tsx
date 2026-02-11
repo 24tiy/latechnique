@@ -11,14 +11,19 @@ export const Footer: React.FC = () => {
       {/* Grass canvas — transparent background, blades grow up from bottom */}
       <GrassFooter />
 
-      {/* Thin ground strip + copyright — blends from green earth to dark */}
+      {/* Copyright text — white, floating above grass */}
       <div
-        className="text-center py-3"
+        className="text-center py-4"
         style={{
-          background: 'linear-gradient(180deg, hsl(120,40%,14%) 0%, hsl(120,35%,8%) 100%)',
+          position: 'absolute',
+          bottom: '0',
+          left: '0',
+          right: '0',
+          background: 'transparent',
+          zIndex: 10,
         }}
       >
-        <p className="body-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>
+        <p className="body-xs" style={{ color: '#ffffff', textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
           © {currentYear} LaTechNique
         </p>
       </div>
