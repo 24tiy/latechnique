@@ -1,13 +1,8 @@
 /* ========================================
    TYPOGRAPHY SYSTEM
-   Based on air.inc design principles
+   All text white on sky background
    ======================================== */
 
-/* ========================================
-   HEADINGS
-   ======================================== */
-
-/* H1 - Hero/Display Title */
 .h1 {
   font-size: clamp(3rem, 18vw, 300px);
   text-transform: uppercase;
@@ -15,23 +10,24 @@
   line-height: 0.85;
   letter-spacing: -0.02em;
   margin: 0;
+  color: #fff;
 }
 
-/* H2 - Section Titles */
 .h2 {
   font-size: clamp(2rem, 4vw, 2.5rem);
   line-height: 1;
   font-weight: 400;
   letter-spacing: -0.01em;
   margin: 0;
+  color: #fff;
 }
 
-/* H3 - Card/Component Titles */
 .h3 {
   font-size: clamp(1.5rem, 3vw, 2rem);
   line-height: 1.1;
   font-weight: 500;
   margin: 0;
+  color: #fff;
 }
 
 .h3-tight {
@@ -40,73 +36,65 @@
   line-height: 1.25;
   font-weight: 500;
   margin: 0;
+  color: #fff;
 }
 
-/* H4 - Subheadings */
 .h4 {
   font-size: clamp(1.25rem, 2.5vw, 1.5rem);
   line-height: 1.2;
   font-weight: 500;
   margin: 0;
+  color: #fff;
 }
 
-/* H5 - Small Headings */
 .h5 {
   font-size: 1.125rem;
   line-height: 1.3;
   font-weight: 500;
   margin: 0;
+  color: #fff;
 }
 
-/* H6 - Tiny Headings */
 .h6 {
   font-size: 1rem;
   line-height: 1.4;
   font-weight: 600;
   margin: 0;
+  color: #fff;
 }
 
-/* ========================================
-   BODY TEXT
-   ======================================== */
-
-/* Body - Default */
 .body {
   font-size: 1rem;
   line-height: 1.5;
   font-weight: 400;
   margin: 0;
+  color: #fff;
 }
 
-/* Body Large */
 .body-large {
   font-size: 1.125rem;
   line-height: 1.6;
   font-weight: 400;
   margin: 0;
+  color: #fff;
 }
 
-/* Body Small */
 .body-small {
   font-size: 0.875rem;
   line-height: 1.5;
   font-weight: 400;
   margin: 0;
+  color: #fff;
 }
 
-/* Body Extra Small */
 .body-xs {
   font-size: 0.75rem;
   line-height: 1.4;
   font-weight: 400;
   margin: 0;
+  color: #fff;
 }
 
-/* ========================================
-   SPECIAL TEXT STYLES
-   ======================================== */
-
-/* Label - UI Labels */
 .label {
   font-size: 0.875rem;
   line-height: 1.4;
@@ -114,29 +102,26 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin: 0;
+  color: #fff;
 }
 
-/* Caption */
 .caption {
   font-size: 0.75rem;
   line-height: 1.3;
   font-weight: 400;
   opacity: 0.7;
   margin: 0;
+  color: #fff;
 }
 
-/* Lead - Intro paragraph */
 .lead {
   font-size: 1.25rem;
   line-height: 1.6;
   font-weight: 400;
   opacity: 0.9;
   margin: 0;
+  color: #fff;
 }
-
-/* ========================================
-   UTILITY CLASSES
-   ======================================== */
 
 .text-balance {
   text-wrap: balance;
@@ -151,19 +136,16 @@
 }
 
 .text-gradient {
-  background: linear-gradient(135deg, var(--accent), var(--aurora));
+  background: linear-gradient(135deg, #4c96f7, #8b5cf6);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .text-muted {
-  opacity: 0.6;
+  opacity: 0.65;
+  color: #fff;
 }
-
-/* ========================================
-   RESPONSIVE MODIFIERS
-   ======================================== */
 
 @media (max-width: 768px) {
   .h1 {
