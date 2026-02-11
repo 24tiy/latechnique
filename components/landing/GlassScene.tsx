@@ -44,7 +44,7 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     const mobile = window.innerWidth < 768;
     const dpr = Math.min(window.devicePixelRatio, mobile ? 1.5 : 2);
 
-    /* ━━ RENDERER — transparent, direct render (no post-processing) ━━ */
+    /* ━━ RENDERER — transparent, direct render ━━ */
     const renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
@@ -56,7 +56,7 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     renderer.setPixelRatio(dpr);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.15;
+    renderer.toneMappingExposure = 1.2;
     renderer.setClearColor(0x000000, 0);
     rendererRef.current = renderer;
 
@@ -74,7 +74,7 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
 
-    /* ━━ ENV MAP for glass reflections ━━ */
+    /* ━━ ENV MAP for ultra-clear glass reflections ━━ */
     const skyCanvas = buildSkyTexture();
     const skyTex = new THREE.CanvasTexture(skyCanvas);
     skyTex.mapping = THREE.EquirectangularReflectionMapping;
@@ -86,42 +86,44 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     scene.environment = envMap;
     pmrem.dispose();
 
-    /* ━━ LIGHTING ━━ */
-    scene.add(new THREE.AmbientLight(0xc8e0ff, 0.7));
+    /* ━━ LIGHTING — bright, clear for glass ━━ */
+    scene.add(new THREE.AmbientLight(0xe0f0ff, 0.9));
 
-    const key = new THREE.DirectionalLight(0xfff0e0, 1.6);
-    key.position.set(5, 10, 5);
+    const key = new THREE.DirectionalLight(0xffffff, 2.0);
+    key.position.set(6, 12, 6);
     scene.add(key);
 
-    const fill = new THREE.DirectionalLight(0xc8d0ff, 0.6);
-    fill.position.set(-5, 3, 5);
+    const fill = new THREE.DirectionalLight(0xd0e0ff, 0.8);
+    fill.position.set(-6, 4, 6);
     scene.add(fill);
 
-    const rim = new THREE.DirectionalLight(0xd8c0ff, 1.0);
-    rim.position.set(0, 4, -8);
+    const rim = new THREE.DirectionalLight(0xe8f0ff, 1.2);
+    rim.position.set(0, 5, -10);
     scene.add(rim);
 
-    const spec = new THREE.PointLight(0xffffff, 22, 30);
-    spec.position.set(3, 4, 8);
+    const spec = new THREE.PointLight(0xffffff, 28, 35);
+    spec.position.set(4, 5, 10);
     scene.add(spec);
     specLightRef.current = spec;
 
-    /* ━━ GLASS TEXT — tubular, rounded like glass pipes ━━ */
+    /* ━━ GLASS MATERIAL — ultra-clear, Air-style ━━ */
     const glass = new THREE.MeshPhysicalMaterial({
-      transmission: 0.92,
-      roughness: 0.015,
+      transmission: 0.98,         // Almost fully transparent
+      roughness: 0.005,           // Ultra-smooth
       metalness: 0.0,
-      ior: 1.45,
-      thickness: 0.9,
-      envMapIntensity: 3.0,
-      specularIntensity: 1.2,
+      ior: 1.52,                  // Glass index of refraction
+      thickness: 0.6,             // Thinner for clearer look
+      envMapIntensity: 4.0,       // Strong reflections
+      specularIntensity: 1.5,
       specularColor: new THREE.Color(0xffffff),
       clearcoat: 1.0,
-      clearcoatRoughness: 0.008,
-      attenuationColor: new THREE.Color('#b0d8ff'),
-      attenuationDistance: 6.0,
+      clearcoatRoughness: 0.005,
+      attenuationColor: new THREE.Color('#e8f4ff'),
+      attenuationDistance: 8.0,
       color: new THREE.Color(0xffffff),
       side: THREE.FrontSide,
+      transparent: true,
+      opacity: 0.15,              // Very subtle tint
     });
 
     const fontLoader = new FontLoader();
@@ -129,17 +131,16 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
       'https://cdn.jsdelivr.net/npm/three@0.164.0/examples/fonts/helvetiker_bold.typeface.json',
       (font: any) => {
         const sz = mobile ? 0.8 : 1.3;
-        /* ── Tubular: deep extrusion + large rounded bevel ── */
-        const depth = mobile ? 0.7 : 1.1;
-        const bevelThickness = mobile ? 0.18 : 0.3;
-        const bevelSize = mobile ? 0.1 : 0.2;
-        const bevelSegments = mobile ? 6 : 16;
+        const depth = mobile ? 0.5 : 0.8;     // Thinner depth
+        const bevelThickness = mobile ? 0.12 : 0.2;
+        const bevelSize = mobile ? 0.08 : 0.15;
+        const bevelSegments = mobile ? 8 : 20;
 
         const geo = new TextGeometry('LaTechNique', {
           font,
           size: sz,
           height: depth,
-          curveSegments: mobile ? 12 : 24,
+          curveSegments: mobile ? 16 : 32,
           bevelEnabled: true,
           bevelThickness,
           bevelSize,
@@ -175,7 +176,7 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
       return _v1.y + _v3.y * t;
     }
 
-    /* ━━ ANIMATION LOOP — direct renderer.render() ━━ */
+    /* ━━ ANIMATION LOOP ━━ */
     const LERP = 0.05;
     const ANIM_END = 0.65;
     lastTimeRef.current = performance.now();
@@ -213,12 +214,12 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
       if (specLightRef.current) {
         specLightRef.current.position.x = lerp(
           specLightRef.current.position.x,
-          3 + mouseRef.current.x * 4,
+          4 + mouseRef.current.x * 5,
           0.03
         );
         specLightRef.current.position.y = lerp(
           specLightRef.current.position.y,
-          4 + mouseRef.current.y * 2,
+          5 + mouseRef.current.y * 3,
           0.03
         );
       }
@@ -266,7 +267,7 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
 };
 
 /* ═══════════════════════════════════════════════════════
-   SKY TEXTURE — env-map reflections only
+   SKY TEXTURE — brighter for glass reflections
    ═══════════════════════════════════════════════════════ */
 function buildSkyTexture(): HTMLCanvasElement {
   const w = 2048, h = 1024;
@@ -276,23 +277,25 @@ function buildSkyTexture(): HTMLCanvasElement {
   const ctx = c.getContext('2d')!;
 
   const g = ctx.createLinearGradient(0, 0, 0, h);
-  g.addColorStop(0.0, '#0f1b3d');
-  g.addColorStop(0.15, '#1a3068');
-  g.addColorStop(0.3, '#254a96');
-  g.addColorStop(0.45, '#3568b8');
-  g.addColorStop(0.55, '#5090d0');
-  g.addColorStop(0.65, '#78b8e2');
-  g.addColorStop(0.75, '#92cce8');
-  g.addColorStop(0.85, '#b0dcf0');
-  g.addColorStop(1.0, '#daf2fa');
+  g.addColorStop(0.0, '#1a2a50');
+  g.addColorStop(0.1, '#254075');
+  g.addColorStop(0.2, '#3058a0');
+  g.addColorStop(0.3, '#4070c0');
+  g.addColorStop(0.4, '#5588d8');
+  g.addColorStop(0.5, '#70a0e8');
+  g.addColorStop(0.6, '#88b8f0');
+  g.addColorStop(0.7, '#a0d0f5');
+  g.addColorStop(0.8, '#b8e0f8');
+  g.addColorStop(0.9, '#d0ecfa');
+  g.addColorStop(1.0, '#e8f8fc');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
 
   ctx.globalCompositeOperation = 'screen';
-  const sun = ctx.createRadialGradient(w * 0.5, h * 0.45, 0, w * 0.5, h * 0.45, w * 0.25);
-  sun.addColorStop(0, 'rgba(255,245,230,0.12)');
-  sun.addColorStop(0.4, 'rgba(255,230,210,0.06)');
-  sun.addColorStop(1, 'rgba(255,220,200,0)');
+  const sun = ctx.createRadialGradient(w * 0.5, h * 0.4, 0, w * 0.5, h * 0.4, w * 0.3);
+  sun.addColorStop(0, 'rgba(255,250,240,0.15)');
+  sun.addColorStop(0.5, 'rgba(255,240,220,0.08)');
+  sun.addColorStop(1, 'rgba(255,230,210,0)');
   ctx.fillStyle = sun;
   ctx.fillRect(0, 0, w, h);
 
