@@ -17,7 +17,7 @@ interface Blade {
 export const GrassFooter: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const bladesRef = useRef<Blade[]>([]);
-  const frameRef = useRef(0);
+  const rafRef = useRef(0);
   const timeRef = useRef(0);
   const lastTimeRef = useRef(0);
 
@@ -131,11 +131,11 @@ export const GrassFooter: React.FC = () => {
 
   const animate = useCallback(() => {
     const now = performance.now();
-    const dt = (now - lastFrameRef.current) / 1000;
+    const dt = (now - lastTimeRef.current) / 1000;
     lastTimeRef.current = now;
     timeRef.current += dt;
     draw();
-    frameRef.current = requestAnimationFrame(animate);
+    rafRef.current = requestAnimationFrame(animate);
   }, [draw]);
 
   useEffect(() => {
@@ -154,11 +154,11 @@ export const GrassFooter: React.FC = () => {
 
     resize();
     lastTimeRef.current = performance.now();
-    frameRef.current = requestAnimationFrame(animate);
+    rafRef.current = requestAnimationFrame(animate);
 
     window.addEventListener('resize', resize);
     return () => {
-      cancelAnimationFrame(frameRef.current);
+      cancelAnimationFrame(rafRef.current);
       window.removeEventListener('resize', resize);
     };
   }, [animate, initBlades]);
