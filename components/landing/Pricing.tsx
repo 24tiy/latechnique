@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { Card } from '../design-system/Card';
-import { AnimatedBorder } from '../design-system/AnimatedBorder';
 import { Button } from '../design-system/Button';
 import { ScrollReveal } from '../design-system/ScrollReveal';
 import { Check } from 'lucide-react';
@@ -68,17 +67,11 @@ export const Pricing: React.FC = () => {
                 key={tier.name}
                 className="col-span-12 md:col-span-6 lg:col-span-4 reveal-child"
               >
-                {tier.highlighted ? (
-                  <AnimatedBorder>
-                    <Card padding="lg" className="h-full">
-                      <PricingCard tier={tier} highlighted />
-                    </Card>
-                  </AnimatedBorder>
-                ) : (
-                  <Card padding="lg" className="h-full">
-                    <PricingCard tier={tier} />
+                <div className={tier.highlighted ? 'pricing-card-highlighted' : ''}>
+                  <Card padding="lg" className={`h-full ${tier.highlighted ? 'card-featured' : ''}`}>
+                    <PricingCard tier={tier} highlighted={tier.highlighted} />
                   </Card>
-                )}
+                </div>
               </div>
             ))}
           </div>
