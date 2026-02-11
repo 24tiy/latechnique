@@ -18,7 +18,6 @@ function smoothstep(e0: number, e1: number, x: number): number {
 const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<any>(null);
-  const composerRef = useRef<any>(null);
   const cameraRef = useRef<any>(null);
   const sceneRef = useRef<any>(null);
   const textGroupRef = useRef<any>(null);
@@ -40,39 +39,30 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     const { FontLoader } = await import(
       'three/examples/jsm/loaders/FontLoader.js'
     );
-    const { EffectComposer } = await import(
-      'three/examples/jsm/postprocessing/EffectComposer.js'
-    );
-    const { RenderPass } = await import(
-      'three/examples/jsm/postprocessing/RenderPass.js'
-    );
-    const { UnrealBloomPass } = await import(
-      'three/examples/jsm/postprocessing/UnrealBloomPass.js'
-    );
 
     const canvas = canvasRef.current;
     const mobile = window.innerWidth < 768;
     const dpr = Math.min(window.devicePixelRatio, mobile ? 1.5 : 2);
 
-    /* ━━ RENDERER — transparent background ━━ */
+    /* ━━ RENDERER — transparent, direct render (no post-processing) ━━ */
     const renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
       alpha: true,
+      premultipliedAlpha: false,
       powerPreference: 'high-performance',
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(dpr);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.0;
+    renderer.toneMappingExposure = 1.15;
     renderer.setClearColor(0x000000, 0);
     rendererRef.current = renderer;
 
     /* ━━ SCENE & CAMERA ━━ */
     const scene = new THREE.Scene();
     sceneRef.current = scene;
-    // No fog, no background — transparent
 
     const camera = new THREE.PerspectiveCamera(
       mobile ? 50 : 38,
@@ -94,43 +84,42 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     pmrem.compileEquirectangularShader();
     const envMap = pmrem.fromEquirectangular(skyTex).texture;
     scene.environment = envMap;
-    // scene.background NOT set — stays transparent
     pmrem.dispose();
 
     /* ━━ LIGHTING ━━ */
-    scene.add(new THREE.AmbientLight(0xc8d8ff, 0.6));
+    scene.add(new THREE.AmbientLight(0xc8e0ff, 0.7));
 
-    const key = new THREE.DirectionalLight(0xfff0e0, 1.4);
+    const key = new THREE.DirectionalLight(0xfff0e0, 1.6);
     key.position.set(5, 10, 5);
     scene.add(key);
 
-    const fill = new THREE.DirectionalLight(0xc8d0ff, 0.5);
+    const fill = new THREE.DirectionalLight(0xc8d0ff, 0.6);
     fill.position.set(-5, 3, 5);
     scene.add(fill);
 
-    const rim = new THREE.DirectionalLight(0xd8c0ff, 0.9);
+    const rim = new THREE.DirectionalLight(0xd8c0ff, 1.0);
     rim.position.set(0, 4, -8);
     scene.add(rim);
 
-    const spec = new THREE.PointLight(0xffffff, 18, 30);
+    const spec = new THREE.PointLight(0xffffff, 22, 30);
     spec.position.set(3, 4, 8);
     scene.add(spec);
     specLightRef.current = spec;
 
-    /* ━━ GLASS TEXT ━━ */
+    /* ━━ GLASS TEXT — tubular, rounded like glass pipes ━━ */
     const glass = new THREE.MeshPhysicalMaterial({
-      transmission: 0.94,
-      roughness: 0.03,
+      transmission: 0.92,
+      roughness: 0.015,
       metalness: 0.0,
-      ior: 1.5,
-      thickness: 0.45,
-      envMapIntensity: 2.5,
-      specularIntensity: 1.0,
+      ior: 1.45,
+      thickness: 0.9,
+      envMapIntensity: 3.0,
+      specularIntensity: 1.2,
       specularColor: new THREE.Color(0xffffff),
-      clearcoat: 0.9,
-      clearcoatRoughness: 0.02,
-      attenuationColor: new THREE.Color('#c8d8ff'),
-      attenuationDistance: 12.0,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.008,
+      attenuationColor: new THREE.Color('#b0d8ff'),
+      attenuationDistance: 6.0,
       color: new THREE.Color(0xffffff),
       side: THREE.FrontSide,
     });
@@ -140,17 +129,22 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
       'https://cdn.jsdelivr.net/npm/three@0.164.0/examples/fonts/helvetiker_bold.typeface.json',
       (font: any) => {
         const sz = mobile ? 0.8 : 1.3;
-        const depth = mobile ? 0.4 : 0.6;
+        /* ── Tubular: deep extrusion + large rounded bevel ── */
+        const depth = mobile ? 0.7 : 1.1;
+        const bevelThickness = mobile ? 0.18 : 0.3;
+        const bevelSize = mobile ? 0.1 : 0.2;
+        const bevelSegments = mobile ? 6 : 16;
+
         const geo = new TextGeometry('LaTechNique', {
           font,
           size: sz,
           height: depth,
-          curveSegments: mobile ? 10 : 20,
+          curveSegments: mobile ? 12 : 24,
           bevelEnabled: true,
-          bevelThickness: 0.12,
-          bevelSize: 0.06,
+          bevelThickness,
+          bevelSize,
           bevelOffset: 0,
-          bevelSegments: mobile ? 4 : 8,
+          bevelSegments,
         });
         geo.computeBoundingBox();
         const bb = geo.boundingBox!;
@@ -167,21 +161,6 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
       }
     );
 
-    /* ━━ POST-PROCESSING ━━ */
-    const composer = new EffectComposer(renderer);
-    const renderPass = new RenderPass(scene, camera);
-    renderPass.clear = true;
-    renderPass.clearAlpha = 0;
-    composer.addPass(renderPass);
-    const bloom = new UnrealBloomPass(
-      new THREE.Vector2(window.innerWidth, window.innerHeight),
-      0.12,
-      0.3,
-      0.9
-    );
-    composer.addPass(bloom);
-    composerRef.current = composer;
-
     /* ━━ HELPER: target Y for header dock ━━ */
     const _v1 = new THREE.Vector3();
     const _v2 = new THREE.Vector3();
@@ -196,7 +175,7 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
       return _v1.y + _v3.y * t;
     }
 
-    /* ━━ ANIMATION LOOP ━━ */
+    /* ━━ ANIMATION LOOP — direct renderer.render() ━━ */
     const LERP = 0.05;
     const ANIM_END = 0.65;
     lastTimeRef.current = performance.now();
@@ -218,11 +197,9 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
       const animT = Math.min(1, s / ANIM_END);
       const eased = smoothstep(0, 1, animT);
 
-      // Camera fixed
       camera.position.set(0, 2, 18);
       camera.lookAt(0, 0, 0);
 
-      // Text rotation and docking
       if (textGroupRef.current) {
         const g = textGroupRef.current;
         g.rotation.y = eased * Math.PI * 4;
@@ -233,7 +210,6 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
         g.position.y = lerp(0, headerWorldY(camera), eased);
       }
 
-      // Mouse-reactive specular light
       if (specLightRef.current) {
         specLightRef.current.position.x = lerp(
           specLightRef.current.position.x,
@@ -247,17 +223,14 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
         );
       }
 
-      // Clear to transparent before each frame
       renderer.setClearColor(0x000000, 0);
-      composer.render();
+      renderer.render(scene, camera);
     }
 
     animate();
   }, []);
 
-  useEffect(() => {
-    scrollRef.current = scrollProgress;
-  }, [scrollProgress]);
+  useEffect(() => { scrollRef.current = scrollProgress; }, [scrollProgress]);
 
   useEffect(() => {
     const fn = (e: MouseEvent) => {
@@ -270,14 +243,12 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
 
   useEffect(() => {
     const fn = () => {
-      if (!rendererRef.current || !cameraRef.current || !composerRef.current)
-        return;
+      if (!rendererRef.current || !cameraRef.current) return;
       const w = window.innerWidth;
       const h = window.innerHeight;
       cameraRef.current.aspect = w / h;
       cameraRef.current.updateProjectionMatrix();
       rendererRef.current.setSize(w, h);
-      composerRef.current.setSize(w, h);
     };
     window.addEventListener('resize', fn);
     return () => window.removeEventListener('resize', fn);
@@ -295,11 +266,10 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
 };
 
 /* ═══════════════════════════════════════════════════════
-   SKY TEXTURE — used ONLY for env-map reflections
+   SKY TEXTURE — env-map reflections only
    ═══════════════════════════════════════════════════════ */
 function buildSkyTexture(): HTMLCanvasElement {
-  const w = 2048,
-    h = 1024;
+  const w = 2048, h = 1024;
   const c = document.createElement('canvas');
   c.width = w;
   c.height = h;
@@ -318,18 +288,10 @@ function buildSkyTexture(): HTMLCanvasElement {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
 
-  // Subtle sun glow
   ctx.globalCompositeOperation = 'screen';
-  const sun = ctx.createRadialGradient(
-    w * 0.5,
-    h * 0.45,
-    0,
-    w * 0.5,
-    h * 0.45,
-    w * 0.25
-  );
-  sun.addColorStop(0, 'rgba(255,245,230,0.1)');
-  sun.addColorStop(0.4, 'rgba(255,230,210,0.05)');
+  const sun = ctx.createRadialGradient(w * 0.5, h * 0.45, 0, w * 0.5, h * 0.45, w * 0.25);
+  sun.addColorStop(0, 'rgba(255,245,230,0.12)');
+  sun.addColorStop(0.4, 'rgba(255,230,210,0.06)');
   sun.addColorStop(1, 'rgba(255,220,200,0)');
   ctx.fillStyle = sun;
   ctx.fillRect(0, 0, w, h);
