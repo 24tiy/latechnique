@@ -18,63 +18,98 @@ export const Hero: React.FC = () => {
   const subRef = useRef<HTMLDivElement>(null);
   const hintRef = useRef<HTMLDivElement>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
-  const [isSticky, setIsSticky] = useState(false);
+  const progressRef = useRef(0);
 
-  const handleScroll = useCallback(() => {
-    const section = sectionRef.current;
-    if (!section) return;
+  /* ═══════ GSAP ScrollTrigger ═══════ */
+  useEffect(() => {
+    let ctx: any;
 
-    const rect = section.getBoundingClientRect();
-    const total = section.offsetHeight - window.innerHeight;
-    if (total <= 0) return;
+    const initGSAP = async () => {
+      const gsap = (await import('gsap')).default;
+      const { ScrollTrigger } = await import('gsap/ScrollTrigger');
+      gsap.registerPlugin(ScrollTrigger);
 
-    const raw = -rect.top / total;
-    const progress = Math.max(0, Math.min(1, raw));
-    setScrollProgress(progress);
+      const section = sectionRef.current;
+      if (!section) return;
 
-    // Check if text should be sticky (after 65% scroll)
-    setIsSticky(progress >= 0.65);
+      ctx = gsap.context(() => {
+        // Master scroll progress
+        ScrollTrigger.create({
+          trigger: section,
+          start: 'top top',
+          end: 'bottom bottom',
+          scrub: true,
+          onUpdate: (self) => {
+            const p = self.progress;
+            progressRef.current = p;
+            setScrollProgress(p);
+          },
+        });
 
-    // Subtitle appears at ~70% scroll
-    if (subRef.current) {
-      const subT = Math.max(0, (progress - 0.65) / 0.35);
-      subRef.current.style.opacity = String(subT);
-      subRef.current.style.transform = `translateY(${16 * (1 - subT)}px)`;
-    }
+        // Subtitle reveal at ~65% progress
+        if (subRef.current) {
+          gsap.fromTo(
+            subRef.current,
+            { opacity: 0, y: 24 },
+            {
+              opacity: 1,
+              y: 0,
+              duration: 1,
+              ease: 'power3.out',
+              scrollTrigger: {
+                trigger: section,
+                start: '55% top',
+                end: '75% top',
+                scrub: 1,
+              },
+            }
+          );
+        }
 
-    // Scroll hint fades out quickly
-    if (hintRef.current) {
-      hintRef.current.style.opacity = String(Math.max(0, 1 - progress * 6));
-    }
+        // Scroll hint fades out quickly
+        if (hintRef.current) {
+          gsap.to(hintRef.current, {
+            opacity: 0,
+            duration: 0.5,
+            ease: 'power2.out',
+            scrollTrigger: {
+              trigger: section,
+              start: '2% top',
+              end: '8% top',
+              scrub: true,
+            },
+          });
+        }
+      }, section);
+    };
+
+    initGSAP();
+
+    return () => ctx?.revert?.();
   }, []);
 
-  useEffect(() => {
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [handleScroll]);
+  // Canvas wrapper follows sticky behavior based on progress
+  const isDockedToHeader = scrollProgress >= 0.65;
 
   return (
     <section ref={sectionRef} className="hero-scroll-section">
       <div className="hero-sticky">
-        {/* Glass text canvas — becomes sticky when fully docked */}
-        <div 
-          className="glass-canvas-wrapper" 
+        {/* Glass 3D canvas */}
+        <div className="glass-canvas-wrapper"
           style={{
-            position: isSticky ? 'fixed' : 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 'var(--header-height)',
-            zIndex: isSticky ? 100 : 1,
+            position: isDockedToHeader ? 'fixed' : 'absolute',
+            top: 0, left: 0, right: 0,
+            height: isDockedToHeader ? 'var(--header-height)' : '100vh',
+            zIndex: isDockedToHeader ? 100 : 1,
             pointerEvents: 'none',
+            transition: 'height 0.4s cubic-bezier(.22, 1, .36, 1)',
           }}
         >
           <GlassScene scrollProgress={scrollProgress} />
         </div>
 
         <div className="hero-overlay">
-          <div className="hero-sub" ref={subRef} style={{ opacity: 0 }}>
+          <div className="hero-sub" ref={subRef}>
             <p className="hero-subtitle">
               Анализ статистики постов из 6 социальных платформ
             </p>
