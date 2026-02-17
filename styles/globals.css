@@ -1,258 +1,64 @@
-/* ========================================
-   IMPORTS
-   ======================================== */
-
 @import './tokens.css';
 @import './typography.css';
 @import './layout.css';
 @import './components.css';
 @import './hero.css';
 
-/* ========================================
-   TAILWIND BASE
-   ======================================== */
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ========================================
-   CSS RESET & BASE STYLES
-   ======================================== */
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  scroll-behavior: smooth;
+  scroll-behavior: auto; /* GSAP handles smooth scroll */
 }
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   color: #fff;
   line-height: 1.5;
   overflow-x: hidden;
   min-height: 100vh;
-
-  /* ULTRA-SMOOTH SKY GRADIENT — no banding */
   background: linear-gradient(
     180deg,
-    #0d1a38 0%,
-    #10203f 2%,
-    #132647 4%,
-    #162c4f 6%,
-    #193358 8%,
-    #1d3a62 10%,
-    #20416b 12%,
-    #244875 14%,
-    #285080 17%,
-    #2c588a 20%,
-    #306095 23%,
-    #3569a0 26%,
-    #3a72ab 29%,
-    #3f7bb6 32%,
-    #4584c2 36%,
-    #4b8dcd 40%,
-    #5297d8 44%,
-    #59a1e3 48%,
-    #61abee 52%,
-    #6ab5f4 56%,
-    #74bff8 60%,
-    #7fc9fb 64%,
-    #8bd3fd 68%,
-    #98ddfe 72%,
-    #a6e6ff 76%,
-    #b4eeff 80%,
-    #c2f5ff 84%,
-    #d0faff 88%,
-    #ddfcff 92%,
-    #e8feff 96%,
-    #f0ffff 100%
+    #0d1a38 0%, #10203f 2%, #132647 4%, #162c4f 6%,
+    #193358 8%, #1d3a62 10%, #20416b 12%, #244875 14%,
+    #285080 17%, #2c588a 20%, #306095 23%, #3569a0 26%,
+    #3a72ab 29%, #3f7bb6 32%, #4584c2 36%, #4b8dcd 40%,
+    #5297d8 44%, #59a1e3 48%, #61abee 52%, #6ab5f4 56%,
+    #74bff8 60%, #7fc9fb 64%, #8bd3fd 68%, #98ddfe 72%,
+    #a6e6ff 76%, #b4eeff 80%, #c2f5ff 84%, #d0faff 88%,
+    #ddfcff 92%, #e8feff 96%, #f0ffff 100%
   );
   background-attachment: fixed;
 }
 
-/* ========================================
-   SELECTION
-   ======================================== */
+::selection { background: rgba(76, 150, 247, 0.3); color: #fff; }
 
-::selection {
-  background: rgba(76, 150, 247, 0.3);
-  color: #fff;
-}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: rgba(15, 27, 61, 0.4); }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: var(--radius-full); }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
 
-::-moz-selection {
-  background: rgba(76, 150, 247, 0.3);
-  color: #fff;
-}
+:focus-visible { outline: 2px solid rgba(76, 150, 247, 0.6); outline-offset: 2px; }
 
-/* ========================================
-   SCROLLBAR
-   ======================================== */
+a { color: #fff; text-decoration: none; transition: opacity var(--duration-fast) var(--ease); }
+a:hover { opacity: 0.8; }
 
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: rgba(15, 27, 61, 0.4);
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius-full);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-/* ========================================
-   FOCUS STYLES
-   ======================================== */
-
-:focus-visible {
-  outline: 2px solid rgba(76, 150, 247, 0.6);
-  outline-offset: 2px;
-}
-
-/* ========================================
-   LINKS
-   ======================================== */
-
-a {
-  color: #fff;
-  text-decoration: none;
-  transition: opacity var(--duration-fast) var(--ease);
-}
-
-a:hover {
-  opacity: 0.8;
-}
-
-/* ========================================
-   IMAGES
-   ======================================== */
-
-img,
-picture,
-video,
-canvas,
-svg {
-  display: block;
-  max-width: 100%;
-  height: auto;
-}
-
-/* ========================================
-   LISTS
-   ======================================== */
-
-ul,
-ol {
-  list-style: none;
-}
-
-/* ========================================
-   HEADINGS
-   ======================================== */
-
-h1, h2, h3, h4, h5, h6 {
-  font-weight: inherit;
-  line-height: inherit;
-  color: #fff;
-}
-
-/* ========================================
-   BUTTONS
-   ======================================== */
-
-button {
-  font-family: inherit;
-  cursor: pointer;
-}
-
-/* ========================================
-   DISABLED STATE
-   ======================================== */
-
-[disabled] {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-/* ========================================
-   UTILITIES
-   ======================================== */
+img, picture, video, canvas, svg { display: block; max-width: 100%; height: auto; }
+ul, ol { list-style: none; }
+h1, h2, h3, h4, h5, h6 { font-weight: inherit; line-height: inherit; color: #fff; }
+button { font-family: inherit; cursor: pointer; }
+[disabled] { cursor: not-allowed; opacity: 0.5; }
 
 .sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border-width: 0;
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border-width: 0;
 }
 
-.truncate {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.line-clamp-3 {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* ========================================
-   PRINT STYLES
-   ======================================== */
-
-@media print {
-  *,
-  *::before,
-  *::after {
-    background: transparent !important;
-    color: #000 !important;
-    box-shadow: none !important;
-    text-shadow: none !important;
-  }
-
-  a,
-  a:visited {
-    text-decoration: underline;
-  }
-
-  img {
-    page-break-inside: avoid;
-  }
-
-  h2,
-  h3 {
-    page-break-after: avoid;
-  }
-}
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
