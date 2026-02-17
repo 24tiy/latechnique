@@ -1,133 +1,173 @@
-'use client';
+/* ========================================
+   HERO STYLES — Sky / Glass Theme
+   ======================================== */
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import dynamic from 'next/dynamic';
-import { Button } from '../design-system/Button';
+/* ═══════ Scroll section ═══════ */
 
-const GlassScene = dynamic(() => import('./GlassScene'), {
-  ssr: false,
-  loading: () => (
-    <div className="glass-loader">
-      <span>Загрузка 3D…</span>
-    </div>
-  ),
-});
+.hero-scroll-section {
+  position: relative;
+  height: 500vh;
+}
 
-export const Hero: React.FC = () => {
-  const sectionRef = useRef<HTMLDivElement>(null);
-  const subRef = useRef<HTMLDivElement>(null);
-  const hintRef = useRef<HTMLDivElement>(null);
-  const [scrollProgress, setScrollProgress] = useState(0);
-  const progressRef = useRef(0);
+.hero-sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
-  /* ═══════ GSAP ScrollTrigger ═══════ */
-  useEffect(() => {
-    let ctx: any;
+/* ═══════ Glass canvas ═══════ */
 
-    const initGSAP = async () => {
-      const gsap = (await import('gsap')).default;
-      const { ScrollTrigger } = await import('gsap/ScrollTrigger');
-      gsap.registerPlugin(ScrollTrigger);
+.glass-canvas-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100vh;
+  z-index: 1;
+  pointer-events: none;
+}
 
-      const section = sectionRef.current;
-      if (!section) return;
+.glass-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
 
-      ctx = gsap.context(() => {
-        // Master scroll progress
-        ScrollTrigger.create({
-          trigger: section,
-          start: 'top top',
-          end: 'bottom bottom',
-          scrub: true,
-          onUpdate: (self) => {
-            const p = self.progress;
-            progressRef.current = p;
-            setScrollProgress(p);
-          },
-        });
+.glass-loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.875rem;
+}
 
-        // Subtitle reveal at ~65% progress
-        if (subRef.current) {
-          gsap.fromTo(
-            subRef.current,
-            { opacity: 0, y: 24 },
-            {
-              opacity: 1,
-              y: 0,
-              duration: 1,
-              ease: 'power3.out',
-              scrollTrigger: {
-                trigger: section,
-                start: '55% top',
-                end: '75% top',
-                scrub: 1,
-              },
-            }
-          );
-        }
+/* ═══════ Hero overlay ═══════ */
 
-        // Scroll hint fades out quickly
-        if (hintRef.current) {
-          gsap.to(hintRef.current, {
-            opacity: 0,
-            duration: 0.5,
-            ease: 'power2.out',
-            scrollTrigger: {
-              trigger: section,
-              start: '2% top',
-              end: '8% top',
-              scrub: true,
-            },
-          });
-        }
-      }, section);
-    };
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 10vh;
+  z-index: 2;
+  pointer-events: none;
+}
 
-    initGSAP();
+.hero-sub {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  opacity: 0;
+  pointer-events: auto;
+  text-align: center;
+  padding: 0 1.5rem;
+}
 
-    return () => ctx?.revert?.();
-  }, []);
+.hero-subtitle {
+  font-size: clamp(1rem, 2.5vw, 1.375rem);
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.85);
+  max-width: 560px;
+  text-align: center;
+}
 
-  // Canvas wrapper follows sticky behavior based on progress
-  const isDockedToHeader = scrollProgress >= 0.65;
+.hero-cta {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
 
-  return (
-    <section ref={sectionRef} className="hero-scroll-section">
-      <div className="hero-sticky">
-        {/* Glass 3D canvas */}
-        <div className="glass-canvas-wrapper"
-          style={{
-            position: isDockedToHeader ? 'fixed' : 'absolute',
-            top: 0, left: 0, right: 0,
-            height: isDockedToHeader ? 'var(--header-height)' : '100vh',
-            zIndex: isDockedToHeader ? 100 : 1,
-            pointerEvents: 'none',
-            transition: 'height 0.4s cubic-bezier(.22, 1, .36, 1)',
-          }}
-        >
-          <GlassScene scrollProgress={scrollProgress} />
-        </div>
+/* ═══════ Scroll hint ═══════ */
 
-        <div className="hero-overlay">
-          <div className="hero-sub" ref={subRef}>
-            <p className="hero-subtitle">
-              Анализ статистики постов из 6 социальных платформ
-            </p>
-            <div className="hero-cta">
-              <Button variant="primary" size="lg" href="/register">
-                Начать бесплатно
-              </Button>
-            </div>
-          </div>
-        </div>
+.hero-scroll-hint {
+  position: absolute;
+  bottom: 2.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 10;
+  pointer-events: none;
+}
 
-        <div className="hero-scroll-hint" ref={hintRef}>
-          <div className="hero-scroll-track">
-            <div className="hero-scroll-dot" />
-          </div>
-          <span className="hero-scroll-label">Листайте</span>
-        </div>
-      </div>
-    </section>
-  );
-};
+.hero-scroll-track {
+  width: 1.5px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-scroll-dot {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1.5px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 9999px;
+  animation: scrollDot 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes scrollDot {
+  0%   { top: 0%;  opacity: 1; }
+  80%  { top: 70%; opacity: 0.4; }
+  100% { top: 0%;  opacity: 0; }
+}
+
+.hero-scroll-label {
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 500;
+}
+
+/* ═══════ Scroll Clouds ═══════ */
+
+.scroll-clouds-wrapper {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+/* ═══════ Grass Footer ═══════ */
+
+.grass-footer {
+  position: relative;
+  width: 100%;
+  height: 260px;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .hero-overlay {
+    padding-bottom: 8vh;
+  }
+
+  .hero-scroll-hint {
+    bottom: 1.5rem;
+  }
+
+  .grass-footer {
+    height: 180px;
+  }
+}
