@@ -90,9 +90,9 @@ export const Features: React.FC = () => {
                       {/* Icon */}
                       <div
                         className="w-12 h-12 rounded-xl flex items-center justify-center"
-                        style={{ background: ic.bg }}
+                        style={{ background: ic.bg, color: ic.color }}
                       >
-                        <Icon className="w-6 h-6" color={ic.color} />
+                        <Icon className="w-6 h-6" />
                       </div>
 
                       {/* Title */}
