@@ -12,6 +12,8 @@ const steps = [
     title: 'Загрузите ссылки',
     description:
       'Вставьте URL вручную или загрузите CSV/XLSX файл с до 1000 ссылок на посты.',
+    color: '#4c96f7',
+    bg: 'rgba(76, 150, 247, 0.1)',
   },
   {
     icon: Search,
@@ -19,6 +21,8 @@ const steps = [
     title: 'Получите анализ',
     description:
       'Система автоматически парсит метрики: просмотры, лайки, комментарии, репосты и вычисляет ER%.',
+    color: '#6366f1',
+    bg: 'rgba(99, 102, 241, 0.1)',
   },
   {
     icon: Download,
@@ -26,12 +30,18 @@ const steps = [
     title: 'Экспортируйте данные',
     description:
       'Скачайте готовую таблицу с результатами в CSV или XLSX для дальнейшей работы.',
+    color: '#10b981',
+    bg: 'rgba(16, 185, 129, 0.1)',
   },
 ];
 
 export const HowItWorks: React.FC = () => {
   return (
-    <section id="how-it-works" className="section" style={{ background: 'transparent' }}>
+    <section
+      id="how-it-works"
+      className="section"
+      style={{ background: '#f4f7fb' }}
+    >
       <div className="container">
         <ScrollReveal>
           {/* Section Header */}
@@ -54,24 +64,26 @@ export const HowItWorks: React.FC = () => {
                     {/* Icon & Number */}
                     <div className="flex items-center gap-4">
                       <div
-                        className="w-12 h-12 rounded-lg flex items-center justify-center"
-                        style={{ background: 'rgba(99,102,241,0.2)' }}
+                        className="w-12 h-12 rounded-xl flex items-center justify-center"
+                        style={{ background: step.bg }}
                       >
-                        <step.icon className="w-6 h-6 text-white" />
+                        <step.icon className="w-6 h-6" style={{ color: step.color }} />
                       </div>
                       <span
-                        className="text-5xl font-bold"
-                        style={{ color: 'rgba(255,255,255,0.08)' }}
+                        className="text-5xl font-bold tabular-nums"
+                        style={{ color: 'rgba(15, 23, 41, 0.07)', lineHeight: 1 }}
                       >
                         {step.number}
                       </span>
                     </div>
 
                     {/* Title */}
-                    <h3 className="h4">{step.title}</h3>
+                    <h3 className="h4" style={{ color: '#0f1729' }}>{step.title}</h3>
 
                     {/* Description */}
-                    <p className="body-small text-muted">{step.description}</p>
+                    <p className="body-small" style={{ color: '#9aa4b8' }}>
+                      {step.description}
+                    </p>
                   </div>
                 </Card>
               </div>
@@ -80,14 +92,21 @@ export const HowItWorks: React.FC = () => {
 
           {/* Supported Platforms */}
           <div className="mt-20 text-center">
-            <p className="body-small text-muted mb-8">Поддерживаемые платформы:</p>
-            <div className="flex flex-wrap items-center justify-center gap-6">
+            <p className="body-small mb-8" style={{ color: '#9aa4b8' }}>
+              Поддерживаемые платформы:
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-3">
               {['TikTok', 'Instagram', 'YouTube', 'VK', 'Telegram', 'Likee'].map(
                 (platform) => (
                   <div
                     key={platform}
-                    className="px-6 py-3 rounded-lg font-medium text-sm text-white"
-                    style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
+                    className="px-5 py-2 rounded-full font-medium text-sm"
+                    style={{
+                      background: '#ffffff',
+                      border: '1px solid rgba(15, 23, 41, 0.1)',
+                      color: '#4a5568',
+                      boxShadow: '0 1px 3px rgba(15,23,41,0.06)',
+                    }}
                   >
                     {platform}
                   </div>
