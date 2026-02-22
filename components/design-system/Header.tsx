@@ -20,8 +20,11 @@ export const Header: React.FC = () => {
       className="fixed top-0 left-0 right-0 z-50"
       style={{
         height: 'var(--header-height)',
-        background: 'transparent',
-        border: 'none',
+        background: scrolled ? 'rgba(250, 250, 250, 0.92)' : 'transparent',
+        backdropFilter: scrolled ? 'blur(12px)' : 'none',
+        WebkitBackdropFilter: scrolled ? 'blur(12px)' : 'none',
+        borderBottom: scrolled ? '1px solid rgba(15, 23, 41, 0.06)' : 'none',
+        transition: 'background 0.4s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.4s cubic-bezier(0.22, 1, 0.36, 1)',
       }}
     >
       <div className="container h-full">
