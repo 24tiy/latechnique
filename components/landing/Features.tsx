@@ -79,6 +79,7 @@ export const Features: React.FC = () => {
           <div className="grid-container">
             {features.map((feature, idx) => {
               const ic = iconColors[idx % iconColors.length];
+              const Icon = feature.icon;
               return (
                 <div
                   key={feature.title}
@@ -91,7 +92,7 @@ export const Features: React.FC = () => {
                         className="w-12 h-12 rounded-xl flex items-center justify-center"
                         style={{ background: ic.bg }}
                       >
-                        <feature.icon className="w-6 h-6" style={{ color: ic.color }} />
+                        <Icon className="w-6 h-6" color={ic.color} />
                       </div>
 
                       {/* Title */}
