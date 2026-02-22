@@ -1,6 +1,6 @@
 /* ========================================
-   COMPONENT STYLES — Sky Theme
-   Smooth animations, ultra-transparent
+   COMPONENT STYLES — Light / Air.inc Theme
+   Clean, minimal, white-based
    ======================================== */
 
 /* ========================================
@@ -12,10 +12,11 @@
   display: inline-block;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #fff;
+  color: var(--text, #0f1729);
   text-decoration: none;
   padding-bottom: 4px;
   transition: opacity var(--duration-fast) var(--ease);
+  opacity: 0.75;
 }
 
 .nav-link::after {
@@ -25,7 +26,7 @@
   bottom: 0;
   width: 100%;
   height: 1px;
-  background: #fff;
+  background: var(--text, #0f1729);
   transform: scaleX(0);
   transform-origin: left center;
   transition: transform 0.35s var(--ease);
@@ -35,7 +36,7 @@
 .nav-link:hover::after { transform: scaleX(1); }
 
 /* ========================================
-   BUTTONS
+   BUTTONS — dark on light
    ======================================== */
 
 .btn {
@@ -57,78 +58,65 @@
   position: relative;
   overflow: hidden;
   white-space: nowrap;
-  color: #fff;
+  letter-spacing: -0.01em;
 }
 
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .btn-sm { height: 32px; padding: 0 var(--spacing-md); font-size: 0.75rem; }
-.btn-lg { height: 48px; padding: 0 var(--spacing-2xl); font-size: 1rem; }
+.btn-lg { height: 46px; padding: 0 var(--spacing-2xl); font-size: 0.9375rem; }
 
+/* Primary: dark background, white text */
 .btn-primary {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--text, #0f1729);
   color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid transparent;
 }
-
-.btn-primary::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.15), transparent);
-  opacity: 0;
-  transition: opacity var(--duration-fast) var(--ease);
-}
-
 .btn-primary:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.2);
-  transform: scale(1.02);
+  background: #1e2d4e;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(15, 23, 41, 0.2);
 }
 
-.btn-primary:hover:not(:disabled)::before { opacity: 1; }
-
+/* Secondary: outlined */
 .btn-secondary {
   background: transparent;
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: var(--text, #0f1729);
+  border: 1px solid rgba(15, 23, 41, 0.2);
+}
+.btn-secondary:hover:not(:disabled) {
+  border-color: rgba(15, 23, 41, 0.5);
+  background: rgba(15, 23, 41, 0.04);
 }
 
-.btn-secondary::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(255, 255, 255, 0.08);
-  opacity: 0;
-  transition: opacity var(--duration-fast) var(--ease);
+/* Tertiary: minimal */
+.btn-tertiary {
+  background: transparent;
+  color: var(--text-secondary, #4a5568);
+  border: 1px solid transparent;
 }
-
-.btn-secondary:hover:not(:disabled) { border-color: rgba(255, 255, 255, 0.5); }
-.btn-secondary:hover:not(:disabled)::before { opacity: 1; }
-
-.btn-tertiary { background: transparent; color: #fff; }
-.btn-tertiary:hover:not(:disabled) { background: rgba(255, 255, 255, 0.08); }
+.btn-tertiary:hover:not(:disabled) {
+  background: rgba(15, 23, 41, 0.05);
+  color: var(--text, #0f1729);
+}
 
 /* ========================================
-   CARDS — ultra-transparent glass
+   CARDS — clean white with shadow
    ======================================== */
 
 .card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 41, 0.07);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  transition: all 0.5s var(--ease);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  color: #fff;
+  transition: all 0.4s var(--ease);
+  box-shadow: var(--shadow-sm);
+  color: var(--text, #0f1729);
 }
 
 .card-hover:hover {
-  transform: scale(1.02);
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.1);
-  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: rgba(15, 23, 41, 0.04);
 }
 
 .card-padding { padding: var(--spacing-2xl); }
@@ -136,14 +124,13 @@
 .card-padding-lg { padding: var(--spacing-3xl); }
 
 /* ========================================
-   PRICING CARDS — consistent look
+   PRICING CARDS
    ======================================== */
 
-/* Featured card — subtle elevated glass instead of heavy AnimatedBorder */
 .card-featured {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(76, 150, 247, 0.25);
-  box-shadow: 0 0 40px rgba(76, 150, 247, 0.08);
+  background: #ffffff;
+  border-color: rgba(76, 150, 247, 0.3);
+  box-shadow: 0 0 0 1px rgba(76, 150, 247, 0.2), var(--shadow-lg);
 }
 
 .pricing-card-highlighted {
@@ -152,29 +139,49 @@
   height: 100%;
 }
 
-/* Gentle pulsing glow on the highlighted card border */
 .pricing-card-highlighted::before {
   content: '';
   position: absolute;
   inset: -1px;
-  border-radius: var(--radius-lg);
+  border-radius: calc(var(--radius-lg) + 1px);
   background: linear-gradient(
     135deg,
-    rgba(76, 150, 247, 0.35),
-    rgba(139, 92, 246, 0.25),
-    rgba(99, 102, 241, 0.35)
+    rgba(76, 150, 247, 0.5),
+    rgba(139, 92, 246, 0.35),
+    rgba(99, 102, 241, 0.5)
   );
   z-index: -1;
   animation: glowPulse 4s ease-in-out infinite;
 }
 
 @keyframes glowPulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 0.9; }
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1.0; }
+}
+
+/* Override text colors inside cards for light theme */
+.card .h4,
+.card h3,
+.card h4,
+.card p,
+.card span {
+  color: var(--text, #0f1729);
+}
+
+.card .text-muted,
+.card .body-small {
+  color: var(--text-muted-color, #9aa4b8) !important;
+}
+
+/* Pricing card text colors */
+.pricing-card-highlighted .card .h4,
+.pricing-card-highlighted .card .body-small,
+.card-featured .h4 {
+  color: var(--text, #0f1729);
 }
 
 /* ========================================
-   ANIMATED BORDER (kept for other uses)
+   ANIMATED BORDER
    ======================================== */
 
 .animated-border {
@@ -202,9 +209,7 @@
   content: '';
   position: absolute;
   inset: 2px;
-  background: rgba(15, 25, 60, 0.4);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: #fff;
   border-radius: calc(var(--radius-lg) - 2px);
   z-index: -1;
 }
@@ -219,21 +224,21 @@
   width: 100%;
   height: 38px;
   padding: 0 var(--spacing-md);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(15, 23, 41, 0.15);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.05);
-  color: #fff;
+  background: #fff;
+  color: var(--text, #0f1729);
   font-size: 0.875rem;
   transition: all var(--duration-fast) var(--ease);
   outline: none;
 }
 
 .input:focus {
-  border-color: rgba(76, 150, 247, 0.5);
-  box-shadow: 0 0 0 3px rgba(76, 150, 247, 0.1);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(76, 150, 247, 0.12);
 }
 
-.input::placeholder { color: rgba(255, 255, 255, 0.35); }
+.input::placeholder { color: var(--text-muted-color, #9aa4b8); }
 
 /* ========================================
    BADGES
@@ -248,12 +253,12 @@
   font-size: 0.75rem;
   font-weight: 500;
   line-height: 1;
-  color: #fff;
+  color: var(--text, #0f1729);
 }
 
-.badge-primary { background: rgba(255, 255, 255, 0.1); }
-.badge-secondary { background: rgba(255, 255, 255, 0.05); }
-.badge-accent { background: rgba(76, 150, 247, 0.2); }
+.badge-primary { background: rgba(15, 23, 41, 0.07); }
+.badge-secondary { background: rgba(15, 23, 41, 0.04); }
+.badge-accent { background: rgba(76, 150, 247, 0.1); color: var(--accent); }
 
 /* ========================================
    DIVIDERS
@@ -261,13 +266,13 @@
 
 .divider {
   height: 1px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 41, 0.06);
   border: none;
   margin: var(--spacing-2xl) 0;
 }
 
 /* ========================================
-   SCROLL REVEAL — smooth 1.2s animations
+   SCROLL REVEAL
    ======================================== */
 
 .scroll-reveal {
@@ -334,3 +339,10 @@
 .animate-slideUp { animation: slideUp var(--duration-medium) var(--ease); }
 .animate-slideDown { animation: slideDown var(--duration-medium) var(--ease); }
 .animate-scaleIn { animation: scaleIn var(--duration-medium) var(--ease); }
+
+/* ========================================
+   SECTION BACKGROUNDS
+   ======================================== */
+
+.section-white { background: #ffffff; }
+.section-haze { background: var(--haze, #f4f7fb); }
