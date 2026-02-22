@@ -49,7 +49,7 @@ const pricingTiers: PricingTier[] = [
 
 export const Pricing: React.FC = () => {
   return (
-    <section id="pricing" className="section" style={{ background: 'transparent' }}>
+    <section id="pricing" className="section" style={{ background: '#fafafa' }}>
       <div className="container">
         <ScrollReveal>
           {/* Section Header */}
@@ -67,8 +67,14 @@ export const Pricing: React.FC = () => {
                 key={tier.name}
                 className="col-span-12 md:col-span-6 lg:col-span-4 reveal-child"
               >
-                <div className={tier.highlighted ? 'pricing-card-highlighted' : ''}>
-                  <Card padding="lg" className={`h-full ${tier.highlighted ? 'card-featured' : ''}`}>
+                <div
+                  className={tier.highlighted ? 'pricing-card-highlighted' : ''}
+                  style={{ height: '100%' }}
+                >
+                  <Card
+                    padding="lg"
+                    className={`h-full ${tier.highlighted ? 'card-featured' : ''}`}
+                  >
                     <PricingCard tier={tier} highlighted={tier.highlighted} />
                   </Card>
                 </div>
@@ -78,7 +84,7 @@ export const Pricing: React.FC = () => {
 
           {/* Bottom Note */}
           <div className="text-center mt-12">
-            <p className="body-small text-muted">
+            <p className="body-small" style={{ color: '#9aa4b8' }}>
               Все цены указаны с учетом НДС. Безопасная оплата через ЮКасса.
             </p>
           </div>
@@ -98,12 +104,21 @@ const PricingCard: React.FC<PricingCardProps> = ({ tier, highlighted }) => {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="mb-6">
-        <h3 className="h4 mb-2">{tier.name}</h3>
-        <p className="body-small text-muted mb-4">{tier.description}</p>
+        <h3 className="h4 mb-2" style={{ color: '#0f1729' }}>{tier.name}</h3>
+        <p className="body-small mb-4" style={{ color: '#9aa4b8' }}>
+          {tier.description}
+        </p>
         <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-bold text-white">{tier.price}</span>
+          <span
+            className="text-4xl font-bold"
+            style={{ color: highlighted ? '#4c96f7' : '#0f1729' }}
+          >
+            {tier.price}
+          </span>
           {tier.price !== 'Скоро' && tier.price !== '0₽' && (
-            <span className="text-sm text-white/60">/ссылка</span>
+            <span className="text-sm" style={{ color: '#9aa4b8' }}>
+              /ссылка
+            </span>
           )}
         </div>
       </div>
@@ -114,11 +129,13 @@ const PricingCard: React.FC<PricingCardProps> = ({ tier, highlighted }) => {
           <li key={feature} className="flex items-start gap-3">
             <div
               className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-              style={{ background: 'rgba(16,185,129,0.2)' }}
+              style={{ background: 'rgba(16, 185, 129, 0.1)' }}
             >
               <Check className="w-3 h-3" style={{ color: '#10b981' }} />
             </div>
-            <span className="body-small text-white">{feature}</span>
+            <span className="body-small" style={{ color: '#4a5568' }}>
+              {feature}
+            </span>
           </li>
         ))}
       </ul>
