@@ -1,6 +1,6 @@
 /* ========================================
    TYPOGRAPHY SYSTEM
-   All text white on sky background
+   Dark text on white background — air.inc style
    ======================================== */
 
 .h1 {
@@ -10,7 +10,7 @@
   line-height: 0.85;
   letter-spacing: -0.02em;
   margin: 0;
-  color: #fff;
+  color: var(--text, #0f1729);
 }
 
 .h2 {
@@ -19,7 +19,7 @@
   font-weight: 400;
   letter-spacing: -0.01em;
   margin: 0;
-  color: #fff;
+  color: var(--text, #0f1729);
 }
 
 .h3 {
@@ -27,7 +27,7 @@
   line-height: 1.1;
   font-weight: 500;
   margin: 0;
-  color: #fff;
+  color: var(--text, #0f1729);
 }
 
 .h3-tight {
@@ -36,7 +36,7 @@
   line-height: 1.25;
   font-weight: 500;
   margin: 0;
-  color: #fff;
+  color: var(--text, #0f1729);
 }
 
 .h4 {
@@ -44,7 +44,7 @@
   line-height: 1.2;
   font-weight: 500;
   margin: 0;
-  color: #fff;
+  color: var(--text, #0f1729);
 }
 
 .h5 {
@@ -52,7 +52,7 @@
   line-height: 1.3;
   font-weight: 500;
   margin: 0;
-  color: #fff;
+  color: var(--text, #0f1729);
 }
 
 .h6 {
@@ -60,7 +60,7 @@
   line-height: 1.4;
   font-weight: 600;
   margin: 0;
-  color: #fff;
+  color: var(--text, #0f1729);
 }
 
 .body {
@@ -68,7 +68,7 @@
   line-height: 1.5;
   font-weight: 400;
   margin: 0;
-  color: #fff;
+  color: var(--text, #0f1729);
 }
 
 .body-large {
@@ -76,7 +76,7 @@
   line-height: 1.6;
   font-weight: 400;
   margin: 0;
-  color: #fff;
+  color: var(--text, #0f1729);
 }
 
 .body-small {
@@ -84,7 +84,7 @@
   line-height: 1.5;
   font-weight: 400;
   margin: 0;
-  color: #fff;
+  color: var(--text, #0f1729);
 }
 
 .body-xs {
@@ -92,7 +92,7 @@
   line-height: 1.4;
   font-weight: 400;
   margin: 0;
-  color: #fff;
+  color: var(--text, #0f1729);
 }
 
 .label {
@@ -102,25 +102,23 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin: 0;
-  color: #fff;
+  color: var(--text-secondary, #4a5568);
 }
 
 .caption {
   font-size: 0.75rem;
   line-height: 1.3;
   font-weight: 400;
-  opacity: 0.7;
   margin: 0;
-  color: #fff;
+  color: var(--text-muted-color, #9aa4b8);
 }
 
 .lead {
   font-size: 1.25rem;
   line-height: 1.6;
   font-weight: 400;
-  opacity: 0.9;
   margin: 0;
-  color: #fff;
+  color: var(--text-secondary, #4a5568);
 }
 
 .text-balance {
@@ -143,8 +141,8 @@
 }
 
 .text-muted {
-  opacity: 0.65;
-  color: #fff;
+  color: var(--text-muted-color, #9aa4b8) !important;
+  opacity: 1;
 }
 
 @media (max-width: 768px) {
