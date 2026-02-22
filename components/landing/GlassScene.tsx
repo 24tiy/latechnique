@@ -2,22 +2,10 @@
 
 import React, { useEffect, useRef, useCallback } from 'react';
 
-/* ═══════════════════════════════════════════════════════════
-   ULTRA GLASS SCENE
-   - TextGeometry with high-quality bevel
-   - MeshPhysicalMaterial transmission + refraction render target
-   - Head/tail reveal via onBeforeCompile shader injection
-   - Post-processing: Bloom + ChromaticAberration + FilmGrain
-   - Spring-damped motion (camera-first feel)
-   - 3D cloud planes in scene (participate in refraction)
-   - Mouse parallax on specular light
-   ═══════════════════════════════════════════════════════════ */
-
 interface GlassSceneProps {
   scrollProgress: number;
 }
 
-/* ---------- Math helpers ---------- */
 function springDamp(current: number, target: number, velocity: number, stiffness: number, damping: number, dt: number) {
   const force = (target - current) * stiffness;
   const damp = -velocity * damping;
@@ -67,215 +55,142 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     renderer.setPixelRatio(dpr);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.4;
+    renderer.toneMappingExposure = 1.6;
     renderer.setClearColor(0x000000, 0);
 
     /* ═══════ SCENE / CAMERA ═══════ */
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(mobile ? 52 : 38, W / H, 0.1, 300);
-    camera.position.set(0, 1.5, 18);
+    const fov = mobile ? 55 : 44;
+    const camera = new THREE.PerspectiveCamera(fov, W / H, 0.1, 300);
+    camera.position.set(0, 0.8, 14);
     camera.lookAt(0, 0, 0);
 
-    /* ═══════ HDR ENVIRONMENT — rich sky for reflections ═══════ */
+    /* ═══════ ENVIRONMENT MAP ═══════ */
     const envCanvas = buildRichSkyEnv();
     const envTex = new THREE.CanvasTexture(envCanvas);
     envTex.mapping = THREE.EquirectangularReflectionMapping;
     envTex.colorSpace = THREE.SRGBColorSpace;
-
     const pmrem = new THREE.PMREMGenerator(renderer);
     pmrem.compileEquirectangularShader();
     const envMap = pmrem.fromEquirectangular(envTex).texture;
     scene.environment = envMap;
     pmrem.dispose();
 
-    /* ═══════ REFRACTION RENDER TARGET ═══════ */
-    const refractionRT = new THREE.WebGLRenderTarget(
-      Math.floor(W * dpr * 0.5),
-      Math.floor(H * dpr * 0.5),
-      { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat }
-    );
-
-    /* ═══════ 3D CLOUD PLANES (participate in refraction) ═══════ */
-    const cloudGroup = new THREE.Group();
+    /* ═══════ 3D CLOUD PLANES (subtle, behind text) ═══════ */
     const cloudTextures = buildCloudTextures(THREE);
     const cloudPlanes: any[] = [];
-
     const cloudConfigs = [
-      { z: -40, y: 8, x: -15, scale: 22, opacity: 0.45, speed: 0.008 },
-      { z: -55, y: 4, x: 20, scale: 28, opacity: 0.35, speed: 0.005 },
-      { z: -30, y: 12, x: 5, scale: 18, opacity: 0.5, speed: 0.01 },
-      { z: -65, y: -2, x: -10, scale: 32, opacity: 0.3, speed: 0.004 },
-      { z: -45, y: 6, x: -25, scale: 24, opacity: 0.4, speed: 0.007 },
-      { z: -50, y: 10, x: 18, scale: 20, opacity: 0.38, speed: 0.006 },
+      { z: -50, y: 6, x: -18, scale: 24, opacity: 0.22, speed: 0.006 },
+      { z: -65, y: 3, x: 22, scale: 30, opacity: 0.15, speed: 0.004 },
+      { z: -40, y: 10, x: 6, scale: 18, opacity: 0.25, speed: 0.008 },
+      { z: -75, y: -3, x: -12, scale: 35, opacity: 0.12, speed: 0.003 },
+      { z: -55, y: 5, x: -28, scale: 22, opacity: 0.18, speed: 0.005 },
     ];
-
     cloudConfigs.forEach((cfg, i) => {
       const tex = cloudTextures[i % cloudTextures.length];
       const mat = new THREE.MeshBasicMaterial({
-        map: tex,
-        transparent: true,
-        opacity: cfg.opacity,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-        blending: THREE.NormalBlending,
+        map: tex, transparent: true, opacity: cfg.opacity,
+        depthWrite: false, side: THREE.DoubleSide,
       });
-      const geo = new THREE.PlaneGeometry(cfg.scale, cfg.scale * 0.5);
+      const geo = new THREE.PlaneGeometry(cfg.scale, cfg.scale * 0.45);
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(cfg.x, cfg.y, cfg.z);
       mesh.userData = { speed: cfg.speed, baseX: cfg.x };
-      cloudGroup.add(mesh);
+      scene.add(mesh);
       cloudPlanes.push(mesh);
     });
-    scene.add(cloudGroup);
 
-    /* ═══════ LIGHTING — cinematic setup ═══════ */
-    scene.add(new THREE.AmbientLight(0xf0f8ff, 1.2));
-
-    const keyLight = new THREE.DirectionalLight(0xffffff, 3.5);
-    keyLight.position.set(8, 14, 8);
+    /* ═══════ LIGHTING ═══════ */
+    scene.add(new THREE.AmbientLight(0xf0f8ff, 1.5));
+    const keyLight = new THREE.DirectionalLight(0xffffff, 4.0);
+    keyLight.position.set(8, 14, 10);
     scene.add(keyLight);
-
-    const fillLight = new THREE.DirectionalLight(0xe8f4ff, 1.5);
-    fillLight.position.set(-7, 5, 7);
+    const fillLight = new THREE.DirectionalLight(0xe8f4ff, 2.0);
+    fillLight.position.set(-8, 4, 8);
     scene.add(fillLight);
-
-    const rimLight = new THREE.DirectionalLight(0xfff8f0, 2.5);
-    rimLight.position.set(0, 6, -12);
+    const rimLight = new THREE.DirectionalLight(0xfff8f0, 3.0);
+    rimLight.position.set(0, 6, -14);
     scene.add(rimLight);
-
-    const specLight = new THREE.PointLight(0xffffff, 60, 50);
+    const specLight = new THREE.PointLight(0xffffff, 80, 60);
     specLight.position.set(5, 6, 14);
     scene.add(specLight);
-
-    const bottomRim = new THREE.DirectionalLight(0xaaccff, 1.8);
-    bottomRim.position.set(0, -6, 8);
+    const bottomRim = new THREE.DirectionalLight(0xaaccff, 2.0);
+    bottomRim.position.set(0, -8, 10);
     scene.add(bottomRim);
-
-    // Extra colored accent lights for "cinematic" look
-    const accentA = new THREE.PointLight(0x4c96f7, 15, 40);
-    accentA.position.set(-10, 3, 5);
+    const accentA = new THREE.PointLight(0x4c96f7, 20, 45);
+    accentA.position.set(-12, 3, 6);
     scene.add(accentA);
-
-    const accentB = new THREE.PointLight(0x8b5cf6, 10, 40);
-    accentB.position.set(10, -2, 8);
+    const accentB = new THREE.PointLight(0x8b5cf6, 15, 45);
+    accentB.position.set(12, -2, 8);
     scene.add(accentB);
 
-    /* ═══════ GLASS MATERIAL — ultra quality ═══════ */
+    /* ═══════ GLASS MATERIAL ═══════ */
+    /*
+     * BUG FIX: The old code had opacity: 0.12, which made text invisible.
+     * With MeshPhysicalMaterial + transmission, do NOT set opacity < 1.
+     * Transmission handles the see-through effect by itself.
+     */
     const glassMaterial = new THREE.MeshPhysicalMaterial({
-      transmission: 0.94,
-      roughness: 0.02,
+      transmission: 0.92,
+      roughness: 0.03,
       metalness: 0.0,
-      ior: 1.45,
-      thickness: 1.2,
-      envMapIntensity: 5.0,
+      ior: 1.5,
+      thickness: 2.0,
+      envMapIntensity: 4.0,
       specularIntensity: 2.0,
       specularColor: new THREE.Color(0xffffff),
       clearcoat: 1.0,
-      clearcoatRoughness: 0.01,
-      attenuationColor: new THREE.Color('#e0f0ff'),
-      attenuationDistance: 4.0,
+      clearcoatRoughness: 0.02,
+      attenuationColor: new THREE.Color('#d8ecff'),
+      attenuationDistance: 3.0,
       color: new THREE.Color(0xffffff),
       side: THREE.DoubleSide,
       transparent: true,
-      opacity: 0.12,
+      // opacity defaults to 1.0 — DO NOT override to 0.12!
     });
 
-    /* ═══════ HEAD/TAIL REVEAL SHADER INJECTION ═══════ */
-    const revealUniforms = {
-      uRevealHead: { value: 0.0 },
-      uRevealTail: { value: 0.0 },
-      uBBoxMin: { value: new THREE.Vector3(-10, -2, -1) },
-      uBBoxMax: { value: new THREE.Vector3(10, 2, 1) },
-    };
-
-    glassMaterial.onBeforeCompile = (shader: any) => {
-      shader.uniforms.uRevealHead = revealUniforms.uRevealHead;
-      shader.uniforms.uRevealTail = revealUniforms.uRevealTail;
-      shader.uniforms.uBBoxMin = revealUniforms.uBBoxMin;
-      shader.uniforms.uBBoxMax = revealUniforms.uBBoxMax;
-
-      // Inject varying into vertex shader
-      shader.vertexShader = shader.vertexShader.replace(
-        '#include <common>',
-        `#include <common>
-         uniform vec3 uBBoxMin;
-         uniform vec3 uBBoxMax;
-         varying float vProgress;`
-      );
-      shader.vertexShader = shader.vertexShader.replace(
-        '#include <begin_vertex>',
-        `#include <begin_vertex>
-         vProgress = (position.x - uBBoxMin.x) / (uBBoxMax.x - uBBoxMin.x);`
-      );
-
-      // Inject discard into fragment shader
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <common>',
-        `#include <common>
-         uniform float uRevealHead;
-         uniform float uRevealTail;
-         varying float vProgress;`
-      );
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <dithering_fragment>',
-        `#include <dithering_fragment>
-         // Soft reveal edges
-         float edgeWidth = 0.03;
-         float headAlpha = smoothstep(uRevealHead - edgeWidth, uRevealHead, vProgress);
-         float tailAlpha = 1.0 - smoothstep(uRevealTail, uRevealTail + edgeWidth, vProgress);
-
-         // Only apply reveal when head < 1 (during writing animation)
-         if (uRevealHead < 0.999) {
-           gl_FragColor.a *= (1.0 - headAlpha);
-         }
-
-         // Dispersion-like color shift at edges (prismatic effect)
-         float edge = smoothstep(0.0, edgeWidth * 3.0, abs(vProgress - uRevealHead));
-         if (uRevealHead < 0.999 && edge < 1.0) {
-           gl_FragColor.rgb += vec3(0.05, 0.02, 0.08) * (1.0 - edge) * gl_FragColor.a;
-         }`
-      );
-    };
-
-    /* ═══════ LOAD FONT + BUILD TEXT ═══════ */
+    /* ═══════ LOAD FONT ═══════ */
     const fontLoader = new FontLoader();
     let textGroup: any = null;
 
     const fontUrl = 'https://cdn.jsdelivr.net/npm/three@0.164.0/examples/fonts/droid/droid_serif_bold.typeface.json';
 
     fontLoader.load(fontUrl, (font: any) => {
-      const sz = mobile ? 1.4 : 2.6;
-      const depth = mobile ? 0.45 : 0.8;
+      /*
+       * BUG FIX: Text must fit in viewport.
+       * Camera z=14, FOV=44° → visible width at z=0 ≈ 11.3 units.
+       * "LaTechNique" (12 chars) at size 1.3 → width ≈ 8.6 units → 76% fill. Good.
+       * Old code used size 2.6 → ~17 units → way wider than viewport → appeared tiny/cropped.
+       */
+      const sz = mobile ? 0.9 : 1.3;
+      const depth = mobile ? 0.35 : 0.55;
 
       const geo = new TextGeometry('LaTechNique', {
         font,
         size: sz,
         height: depth,
-        curveSegments: mobile ? 20 : 48,
+        curveSegments: mobile ? 16 : 40,
         bevelEnabled: true,
-        bevelThickness: mobile ? 0.18 : 0.35,
-        bevelSize: mobile ? 0.15 : 0.28,
+        bevelThickness: mobile ? 0.12 : 0.22,
+        bevelSize: mobile ? 0.1 : 0.18,
         bevelOffset: 0,
-        bevelSegments: mobile ? 12 : 24,
+        bevelSegments: mobile ? 10 : 20,
       });
 
       geo.computeBoundingBox();
       const bb = geo.boundingBox!;
       const mesh = new THREE.Mesh(geo, glassMaterial);
 
-      // Center the mesh
-      const cx = (bb.max.x - bb.min.x) / 2;
-      const cy = (bb.max.y - bb.min.y) / 2;
-      const cz = (bb.max.z - bb.min.z) / 2;
-      mesh.position.set(-cx - bb.min.x, -cy - bb.min.y, -cz - bb.min.z);
-
-      // Update reveal bbox uniforms
-      revealUniforms.uBBoxMin.value.set(bb.min.x, bb.min.y, bb.min.z);
-      revealUniforms.uBBoxMax.value.set(bb.max.x, bb.max.y, bb.max.z);
+      // Center precisely
+      mesh.position.set(
+        -(bb.max.x + bb.min.x) / 2,
+        -(bb.max.y + bb.min.y) / 2,
+        -(bb.max.z + bb.min.z) / 2
+      );
 
       textGroup = new THREE.Group();
       textGroup.add(mesh);
-      mesh.rotation.z = -0.03;
+      mesh.rotation.z = -0.03; // Slight italic lean
       scene.add(textGroup);
     });
 
@@ -285,97 +200,57 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     renderPass.clearAlpha = 0;
     composer.addPass(renderPass);
 
-    // Bloom — subtle but adds glass glow
     const bloomPass = new UnrealBloomPass(
       new THREE.Vector2(W, H),
-      mobile ? 0.3 : 0.45,  // strength
-      0.6,                     // radius
-      0.85                     // threshold
+      mobile ? 0.25 : 0.4, 0.6, 0.85
     );
     composer.addPass(bloomPass);
 
-    // Chromatic aberration — subtle prismatic edge effect
     const ChromaticAberrationShader = {
       uniforms: {
         tDiffuse: { value: null },
-        uOffset: { value: new THREE.Vector2(mobile ? 0.0008 : 0.0012, mobile ? 0.0006 : 0.0008) },
+        uOffset: { value: new THREE.Vector2(0.001, 0.0007) },
       },
-      vertexShader: `
-        varying vec2 vUv;
-        void main() {
-          vUv = uv;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
+      vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
       fragmentShader: `
-        uniform sampler2D tDiffuse;
-        uniform vec2 uOffset;
-        varying vec2 vUv;
+        uniform sampler2D tDiffuse; uniform vec2 uOffset; varying vec2 vUv;
         void main() {
-          vec2 dir = vUv - vec2(0.5);
-          float dist = length(dir);
-          vec2 offset = uOffset * dist;
+          vec2 dir = vUv - vec2(0.5); float dist = length(dir); vec2 offset = uOffset * dist;
           float r = texture2D(tDiffuse, vUv + offset).r;
           float g = texture2D(tDiffuse, vUv).g;
           float b = texture2D(tDiffuse, vUv - offset).b;
           float a = texture2D(tDiffuse, vUv).a;
           gl_FragColor = vec4(r, g, b, a);
-        }
-      `,
+        }`,
     };
     const chromaticPass = new ShaderPass(ChromaticAberrationShader);
     composer.addPass(chromaticPass);
 
-    // Film grain — very subtle for "cinema" feel
     const FilmGrainShader = {
-      uniforms: {
-        tDiffuse: { value: null },
-        uTime: { value: 0 },
-        uIntensity: { value: 0.025 },
-      },
-      vertexShader: `
-        varying vec2 vUv;
-        void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
-      `,
+      uniforms: { tDiffuse: { value: null }, uTime: { value: 0 }, uIntensity: { value: 0.02 } },
+      vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
       fragmentShader: `
-        uniform sampler2D tDiffuse;
-        uniform float uTime;
-        uniform float uIntensity;
-        varying vec2 vUv;
-        float hash(vec2 p) {
-          vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-          p3 += dot(p3, p3.yzx + 33.33);
-          return fract((p3.x + p3.y) * p3.z);
-        }
+        uniform sampler2D tDiffuse; uniform float uTime; uniform float uIntensity; varying vec2 vUv;
+        float hash(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
         void main() {
           vec4 color = texture2D(tDiffuse, vUv);
-          float grain = hash(vUv * 1000.0 + uTime * 100.0) - 0.5;
-          color.rgb += grain * uIntensity;
+          color.rgb += (hash(vUv * 1000.0 + uTime * 100.0) - 0.5) * uIntensity;
           gl_FragColor = color;
-        }
-      `,
+        }`,
     };
     const grainPass = new ShaderPass(FilmGrainShader);
     composer.addPass(grainPass);
-
-    const outputPass = new OutputPass();
-    composer.addPass(outputPass);
+    composer.addPass(new OutputPass());
 
     /* ═══════ SPRING STATE ═══════ */
     const spring = {
       scrollSmooth: 0, scrollVel: 0,
-      rotY: 0, rotYVel: 0,
-      rotX: 0, rotXVel: 0,
-      scale: 1, scaleVel: 0,
-      posY: 0, posYVel: 0,
-      reveal: 0, revealVel: 0,
-      lightX: 5, lightXVel: 0,
-      lightY: 6, lightYVel: 0,
+      rotY: 0, rotYVel: 0, rotX: 0, rotXVel: 0,
+      scale: 1, scaleVel: 0, posY: 0, posYVel: 0,
+      lightX: 5, lightXVel: 0, lightY: 6, lightYVel: 0,
     };
-
     const mouse = { x: 0, y: 0 };
 
-    /* ═══════ HELPER: header world Y ═══════ */
     const _tmpV = new THREE.Vector3();
     function headerWorldY(): number {
       const ndcY = 1 - 2 * (36 / H);
@@ -385,112 +260,61 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
       return camera.position.y + dir.y * t;
     }
 
-    /* ═══════ CLOCK ═══════ */
     let lastTime = performance.now();
     let clock = 0;
-
-    /* ═══════ ANIMATION LOOP ═══════ */
-    const STIFFNESS = 4.0;
-    const DAMPING = 5.0;
-    const LIGHT_STIFFNESS = 2.0;
-    const LIGHT_DAMPING = 4.0;
-    const ANIM_END = 0.6;
+    const ST = 4.0, DM = 5.0, ANIM_END = 0.6;
 
     function animate() {
       frameRef.current = requestAnimationFrame(animate);
-
       const now = performance.now();
       const dt = Math.min((now - lastTime) / 1000, 0.05);
       lastTime = now;
       clock += dt;
 
-      const targetScroll = scrollRef.current;
+      const ss = springDamp(spring.scrollSmooth, scrollRef.current, spring.scrollVel, ST, DM, dt);
+      spring.scrollSmooth = ss.value; spring.scrollVel = ss.velocity;
 
-      // Spring-damp scroll
-      const ss = springDamp(spring.scrollSmooth, targetScroll, spring.scrollVel, STIFFNESS, DAMPING, dt);
-      spring.scrollSmooth = ss.value;
-      spring.scrollVel = ss.velocity;
-
-      const s = spring.scrollSmooth;
-      const animT = Math.min(1, s / ANIM_END);
+      const animT = Math.min(1, spring.scrollSmooth / ANIM_END);
       const eased = smoothstep(0, 1, animT);
 
-      /* --- Reveal animation (writing effect) --- */
-      const revealTarget = Math.min(1, s * 3.0);
-      const rv = springDamp(spring.reveal, revealTarget, spring.revealVel, 6.0, 6.0, dt);
-      spring.reveal = rv.value;
-      spring.revealVel = rv.velocity;
-
-      revealUniforms.uRevealHead.value = 1.0 - Math.max(0, Math.min(1, spring.reveal));
-
-      /* --- Text transform targets --- */
-      const targetRotY = eased * Math.PI * 4;
-      const targetRotX = Math.sin(animT * Math.PI) * 0.06;
-      const targetScale = Math.max(0.18, 1 - eased * 0.82);
-      const targetPosY = eased * headerWorldY();
-
-      // Spring-damp rotation
-      const ry = springDamp(spring.rotY, targetRotY, spring.rotYVel, STIFFNESS * 1.5, DAMPING, dt);
+      const ry = springDamp(spring.rotY, eased * Math.PI * 4, spring.rotYVel, ST * 1.5, DM, dt);
       spring.rotY = ry.value; spring.rotYVel = ry.velocity;
-
-      const rx = springDamp(spring.rotX, targetRotX, spring.rotXVel, STIFFNESS, DAMPING, dt);
+      const rx = springDamp(spring.rotX, Math.sin(animT * Math.PI) * 0.06, spring.rotXVel, ST, DM, dt);
       spring.rotX = rx.value; spring.rotXVel = rx.velocity;
-
-      const sc = springDamp(spring.scale, targetScale, spring.scaleVel, STIFFNESS, DAMPING, dt);
+      const sc = springDamp(spring.scale, Math.max(0.18, 1 - eased * 0.82), spring.scaleVel, ST, DM, dt);
       spring.scale = sc.value; spring.scaleVel = sc.velocity;
-
-      const py = springDamp(spring.posY, targetPosY, spring.posYVel, STIFFNESS, DAMPING, dt);
+      const py = springDamp(spring.posY, eased * headerWorldY(), spring.posYVel, ST, DM, dt);
       spring.posY = py.value; spring.posYVel = py.velocity;
 
-      /* --- Apply to text group --- */
       if (textGroup) {
         textGroup.rotation.y = spring.rotY;
         textGroup.rotation.x = spring.rotX;
         textGroup.scale.setScalar(spring.scale);
         textGroup.position.y = spring.posY;
-
-        // Subtle breathing/drift
-        textGroup.position.x = Math.sin(clock * 0.3) * 0.08;
-        textGroup.position.z = Math.cos(clock * 0.25) * 0.05;
+        textGroup.position.x = Math.sin(clock * 0.3) * 0.06;
       }
 
-      /* --- Light follows mouse with spring --- */
-      const lxTarget = 5 + mouse.x * 6;
-      const lyTarget = 6 + mouse.y * 4;
-      const lx = springDamp(spring.lightX, lxTarget, spring.lightXVel, LIGHT_STIFFNESS, LIGHT_DAMPING, dt);
+      const lx = springDamp(spring.lightX, 5 + mouse.x * 6, spring.lightXVel, 2, 4, dt);
       spring.lightX = lx.value; spring.lightXVel = lx.velocity;
-      const ly = springDamp(spring.lightY, lyTarget, spring.lightYVel, LIGHT_STIFFNESS, LIGHT_DAMPING, dt);
+      const ly = springDamp(spring.lightY, 6 + mouse.y * 4, spring.lightYVel, 2, 4, dt);
       spring.lightY = ly.value; spring.lightYVel = ly.velocity;
+      specLight.position.set(spring.lightX, spring.lightY, 14);
 
-      specLight.position.x = spring.lightX;
-      specLight.position.y = spring.lightY;
-
-      /* --- Animate clouds --- */
-      cloudPlanes.forEach((mesh: any) => {
-        const spd = mesh.userData.speed as number;
-        mesh.position.x = (mesh.userData.baseX as number) + Math.sin(clock * spd * 2) * 3;
-        mesh.position.y += Math.sin(clock * spd * 3 + mesh.id) * 0.001;
+      cloudPlanes.forEach((m: any) => {
+        m.position.x = (m.userData.baseX as number) + Math.sin(clock * (m.userData.speed as number) * 2) * 3;
       });
 
-      /* --- Dynamic tone mapping exposure --- */
-      renderer.toneMappingExposure = 1.4 + Math.sin(animT * Math.PI) * 0.2;
-
-      /* --- Update film grain time --- */
+      renderer.toneMappingExposure = 1.6 + Math.sin(animT * Math.PI) * 0.15;
       grainPass.uniforms.uTime.value = clock;
+      const spd = Math.abs(spring.scrollVel);
+      const ca = (mobile ? 0.0006 : 0.001) + Math.min(spd * 0.002, 0.002);
+      chromaticPass.uniforms.uOffset.value.set(ca, ca * 0.7);
 
-      /* --- Chromatic aberration intensifies at speed --- */
-      const scrollSpeed = Math.abs(spring.scrollVel);
-      const caStrength = mobile ? 0.0008 : 0.0012;
-      const caBoost = Math.min(scrollSpeed * 0.003, 0.003);
-      chromaticPass.uniforms.uOffset.value.set(caStrength + caBoost, (caStrength + caBoost) * 0.7);
-
-      /* --- Render --- */
       composer.render();
     }
 
     animate();
 
-    /* ═══════ EVENTS ═══════ */
     const onMouse = (e: MouseEvent) => {
       mouse.x = (e.clientX / W - 0.5) * 2;
       mouse.y = -(e.clientY / H - 0.5) * 2;
@@ -498,25 +322,20 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
     window.addEventListener('mousemove', onMouse);
 
     const onResize = () => {
-      const w = window.innerWidth;
-      const h = window.innerHeight;
+      const w = window.innerWidth, h = window.innerHeight;
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
       composer.setSize(w, h);
       bloomPass.setSize(w, h);
-      refractionRT.setSize(Math.floor(w * dpr * 0.5), Math.floor(h * dpr * 0.5));
     };
     window.addEventListener('resize', onResize);
 
-    /* ═══════ STORE STATE FOR CLEANUP ═══════ */
     stateRef.current = {
-      renderer, scene, camera, composer, textGroup,
       cleanup: () => {
         window.removeEventListener('mousemove', onMouse);
         window.removeEventListener('resize', onResize);
         renderer.dispose();
-        refractionRT.dispose();
       },
     };
   }, []);
@@ -534,10 +353,6 @@ const GlassScene: React.FC<GlassSceneProps> = ({ scrollProgress }) => {
   return <canvas ref={canvasRef} className="glass-canvas" />;
 };
 
-/* ═══════════════════════════════════════════════════════════
-   RICH SKY ENVIRONMENT MAP
-   ═══════════════════════════════════════════════════════════ */
-
 function buildRichSkyEnv(): HTMLCanvasElement {
   const w = 2048, h = 1024;
   const c = document.createElement('canvas');
@@ -545,98 +360,54 @@ function buildRichSkyEnv(): HTMLCanvasElement {
   const ctx = c.getContext('2d')!;
 
   const g = ctx.createLinearGradient(0, 0, 0, h);
-  g.addColorStop(0.0, '#0a1535');
-  g.addColorStop(0.1, '#1a2a5c');
-  g.addColorStop(0.2, '#2a4080');
-  g.addColorStop(0.3, '#3558a8');
-  g.addColorStop(0.4, '#4a78cc');
-  g.addColorStop(0.5, '#5f95e4');
-  g.addColorStop(0.6, '#78b2f0');
-  g.addColorStop(0.7, '#95ccfa');
-  g.addColorStop(0.8, '#b0e0ff');
-  g.addColorStop(0.9, '#d0f0ff');
-  g.addColorStop(1.0, '#f0f8ff');
+  g.addColorStop(0, '#0a1535'); g.addColorStop(0.15, '#1a3070');
+  g.addColorStop(0.3, '#2a50a0'); g.addColorStop(0.45, '#4080d0');
+  g.addColorStop(0.55, '#60a8f0'); g.addColorStop(0.7, '#88ccff');
+  g.addColorStop(0.85, '#b8e4ff'); g.addColorStop(1, '#e8f8ff');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
 
   ctx.globalCompositeOperation = 'screen';
-  const sun = ctx.createRadialGradient(w * 0.55, h * 0.25, 0, w * 0.55, h * 0.25, w * 0.35);
-  sun.addColorStop(0, 'rgba(255, 255, 240, 0.3)');
-  sun.addColorStop(0.3, 'rgba(255, 248, 230, 0.12)');
-  sun.addColorStop(0.7, 'rgba(255, 240, 220, 0.03)');
-  sun.addColorStop(1, 'rgba(255, 235, 210, 0)');
+  const sun = ctx.createRadialGradient(w * 0.55, h * 0.22, 0, w * 0.55, h * 0.22, w * 0.35);
+  sun.addColorStop(0, 'rgba(255,255,240,0.35)'); sun.addColorStop(0.3, 'rgba(255,248,230,0.15)');
+  sun.addColorStop(1, 'rgba(255,235,210,0)');
   ctx.fillStyle = sun;
-  ctx.fillRect(0, 0, w, h);
-
-  const warm = ctx.createRadialGradient(w * 0.3, h * 0.35, 0, w * 0.3, h * 0.35, w * 0.25);
-  warm.addColorStop(0, 'rgba(255, 220, 180, 0.08)');
-  warm.addColorStop(1, 'rgba(255, 220, 180, 0)');
-  ctx.fillStyle = warm;
   ctx.fillRect(0, 0, w, h);
 
   return c;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   PROCEDURAL CLOUD TEXTURES (for 3D planes)
-   ═══════════════════════════════════════════════════════════ */
-
 function buildCloudTextures(THREE: any): any[] {
   const textures: any[] = [];
-  const seeds = [42, 17, 83, 56, 91, 29];
-
-  for (const seed of seeds) {
+  for (const seed of [42, 17, 83, 56, 91]) {
     const size = 512;
     const c = document.createElement('canvas');
     c.width = size; c.height = size;
     const ctx = c.getContext('2d')!;
-
     ctx.clearRect(0, 0, size, size);
 
     let s = seed;
     const rng = () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+    const cx = size / 2, cy = size / 2;
 
-    const cx = size / 2;
-    const cy = size / 2;
-    const numPuffs = 30 + Math.floor(rng() * 25);
-
-    for (let i = 0; i < numPuffs; i++) {
-      const angle = (i / numPuffs) * Math.PI * 2 + rng() * 0.6;
-      const dist = (0.15 + rng() * 0.3) * size * 0.35;
-      const px = cx + Math.cos(angle) * dist + (rng() - 0.5) * size * 0.05;
-      const py = cy + Math.sin(angle) * dist * 0.55 + (rng() - 0.5) * size * 0.03;
-      const r = size * 0.1 + rng() * size * 0.15;
-
-      const grad = ctx.createRadialGradient(px, py - r * 0.1, 0, px, py, r);
-      const b = 248 + Math.floor(rng() * 7);
-      grad.addColorStop(0, `rgba(${b}, ${b}, ${Math.min(255, b + 3)}, ${0.55 + rng() * 0.3})`);
-      grad.addColorStop(0.5, `rgba(${b - 3}, ${b - 2}, ${b}, ${0.2 + rng() * 0.1})`);
-      grad.addColorStop(1, 'rgba(250, 252, 255, 0)');
-
-      ctx.beginPath();
-      ctx.arc(px, py, r, 0, Math.PI * 2);
-      ctx.fillStyle = grad;
-      ctx.fill();
-    }
-
-    for (let i = 0; i < 8; i++) {
-      const px = cx + (rng() - 0.5) * size * 0.15;
-      const py = cy - size * 0.08 + (rng() - 0.5) * size * 0.05;
-      const r = size * 0.05 + rng() * size * 0.08;
+    for (let i = 0; i < 30; i++) {
+      const a = (i / 30) * Math.PI * 2 + rng() * 0.6;
+      const d = (0.1 + rng() * 0.25) * size * 0.35;
+      const px = cx + Math.cos(a) * d, py = cy + Math.sin(a) * d * 0.5;
+      const r = size * 0.08 + rng() * size * 0.1;
       const grad = ctx.createRadialGradient(px, py, 0, px, py, r);
-      grad.addColorStop(0, `rgba(255, 255, 255, ${0.3 + rng() * 0.2})`);
-      grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
-      ctx.beginPath();
-      ctx.arc(px, py, r, 0, Math.PI * 2);
-      ctx.fillStyle = grad;
-      ctx.fill();
+      const b = 248 + Math.floor(rng() * 7);
+      grad.addColorStop(0, `rgba(${b},${b},${b+2},${0.35 + rng() * 0.2})`);
+      grad.addColorStop(0.5, `rgba(${b-3},${b-2},${b},${0.1 + rng() * 0.06})`);
+      grad.addColorStop(1, 'rgba(250,252,255,0)');
+      ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
+      ctx.fillStyle = grad; ctx.fill();
     }
 
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
     textures.push(tex);
   }
-
   return textures;
 }
 
