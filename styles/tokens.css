@@ -10,23 +10,16 @@
   --total-columns: 12;
 
   /* ========================================
-     COLOR TOKENS
+     COLOR TOKENS — Light / Air.inc inspired
      ======================================== */
-  /* Base */
-  --black: #1b1b1b;
-  --black-rgb: 27, 27, 27;
+  --black: #0f1729;
+  --black-rgb: 15, 23, 41;
   --white: #fff;
   --white-rgb: 255, 255, 255;
   --accent: #4c96f7;
   --accent-rgb: 76, 150, 247;
-  --haze: #f5f5f5;
-  --haze-rgb: 245, 245, 245;
-
-  /* Sky Gradient Colors */
-  --sky-top: #1a2a6c;
-  --sky-mid: #2d4a8c;
-  --sky-bottom: #4a7ab5;
-  --sky-horizon: #7cb4d4;
+  --haze: #f4f7fb;
+  --haze-rgb: 244, 247, 251;
 
   /* Brand Colors */
   --altitude: #6366f1;
@@ -37,8 +30,8 @@
   --ember-rgb: 239, 68, 68;
   --aurora: #8b5cf6;
   --aurora-rgb: 139, 92, 246;
-  --dust: #a3a3a3;
-  --dust-rgb: 163, 163, 163;
+  --dust: #94a3b8;
+  --dust-rgb: 148, 163, 184;
   --soil: #78716c;
   --soil-rgb: 120, 113, 108;
   --teal: #14b8a6;
@@ -46,13 +39,15 @@
   --canopy: #10b981;
   --canopy-rgb: 16, 185, 129;
 
-  /* Semantic Tokens — forced white text on sky */
-  --fg: var(--white);
-  --bg: transparent;
-  --section-bg: transparent;
-  --text: var(--white);
-  --text-rgb: var(--white-rgb);
-  --border-color: rgba(255, 255, 255, 0.15);
+  /* Semantic Tokens — light theme */
+  --fg: #0f1729;
+  --bg: #fafafa;
+  --section-bg: #f4f7fb;
+  --text: #0f1729;
+  --text-rgb: 15, 23, 41;
+  --text-secondary: #4a5568;
+  --text-muted-color: #9aa4b8;
+  --border-color: rgba(0, 0, 0, 0.08);
 
   /* ========================================
      MOTION TOKENS
@@ -93,8 +88,8 @@
   /* ========================================
      SHADOW TOKENS
      ======================================== */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.15);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
+  --shadow-sm: 0 1px 3px 0 rgba(15, 23, 41, 0.06), 0 1px 2px 0 rgba(15, 23, 41, 0.04);
+  --shadow-md: 0 4px 12px -1px rgba(15, 23, 41, 0.08), 0 2px 6px -1px rgba(15, 23, 41, 0.04);
+  --shadow-lg: 0 10px 30px -3px rgba(15, 23, 41, 0.1), 0 4px 12px -2px rgba(15, 23, 41, 0.05);
+  --shadow-xl: 0 20px 50px -5px rgba(15, 23, 41, 0.12), 0 10px 20px -5px rgba(15, 23, 41, 0.06);
 }
