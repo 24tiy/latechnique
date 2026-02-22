@@ -52,9 +52,19 @@ const features: Feature[] = [
   },
 ];
 
+// Brand icon accent colors for light theme
+const iconColors = [
+  { bg: 'rgba(76, 150, 247, 0.1)', color: '#4c96f7' },
+  { bg: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' },
+  { bg: 'rgba(16, 185, 129, 0.1)', color: '#10b981' },
+  { bg: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' },
+  { bg: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6' },
+  { bg: 'rgba(20, 184, 166, 0.1)', color: '#14b8a6' },
+];
+
 export const Features: React.FC = () => {
   return (
-    <section id="features" className="section" style={{ background: 'transparent' }}>
+    <section id="features" className="section" style={{ background: '#fafafa' }}>
       <div className="container">
         <ScrollReveal>
           {/* Section Header */}
@@ -67,30 +77,35 @@ export const Features: React.FC = () => {
 
           {/* Features Grid */}
           <div className="grid-container">
-            {features.map((feature) => (
-              <div
-                key={feature.title}
-                className="col-span-12 md:col-span-6 lg:col-span-4 reveal-child"
-              >
-                <Card hover padding="lg" className="h-full">
-                  <div className="flex flex-col gap-4">
-                    {/* Icon */}
-                    <div
-                      className="w-12 h-12 rounded-lg flex items-center justify-center"
-                      style={{ background: 'rgba(255,255,255,0.1)' }}
-                    >
-                      <feature.icon className="w-6 h-6 text-white" />
+            {features.map((feature, idx) => {
+              const ic = iconColors[idx % iconColors.length];
+              return (
+                <div
+                  key={feature.title}
+                  className="col-span-12 md:col-span-6 lg:col-span-4 reveal-child"
+                >
+                  <Card hover padding="lg" className="h-full">
+                    <div className="flex flex-col gap-4">
+                      {/* Icon */}
+                      <div
+                        className="w-12 h-12 rounded-xl flex items-center justify-center"
+                        style={{ background: ic.bg }}
+                      >
+                        <feature.icon className="w-6 h-6" style={{ color: ic.color }} />
+                      </div>
+
+                      {/* Title */}
+                      <h3 className="h4" style={{ color: '#0f1729' }}>{feature.title}</h3>
+
+                      {/* Description */}
+                      <p className="body-small" style={{ color: '#9aa4b8' }}>
+                        {feature.description}
+                      </p>
                     </div>
-
-                    {/* Title */}
-                    <h3 className="h4">{feature.title}</h3>
-
-                    {/* Description */}
-                    <p className="body-small text-muted">{feature.description}</p>
-                  </div>
-                </Card>
-              </div>
-            ))}
+                  </Card>
+                </div>
+              );
+            })}
           </div>
         </ScrollReveal>
       </div>
