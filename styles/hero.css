@@ -1,5 +1,6 @@
 /* ========================================
    HERO STYLES — Sky / Glass Theme
+   FIXED: z-index ordering, cloud behind glass
    ======================================== */
 
 /* ═══════ Scroll section ═══════ */
@@ -28,7 +29,7 @@
   left: 0;
   right: 0;
   height: 100vh;
-  z-index: 1;
+  z-index: 3; /* ABOVE clouds */
   pointer-events: none;
 }
 
@@ -58,7 +59,7 @@
   align-items: center;
   justify-content: flex-end;
   padding-bottom: 10vh;
-  z-index: 2;
+  z-index: 5; /* ABOVE glass */
   pointer-events: none;
 }
 
@@ -139,13 +140,13 @@
   font-weight: 500;
 }
 
-/* ═══════ Scroll Clouds ═══════ */
+/* ═══════ Scroll Clouds — BEHIND everything ═══════ */
 
 .scroll-clouds-wrapper {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 0;
+  z-index: 1; /* BEHIND glass scene (z:3) and overlay (z:5) */
   overflow: hidden;
 }
 
