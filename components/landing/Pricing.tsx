@@ -36,7 +36,7 @@ const pricingTiers: PricingTier[] = [
   {
     name: 'Пакеты',
     price: 'Скоро',
-    description: 'Выгодные тарифы для больших объемов',
+    description: 'Выгодные тарифы для больших объёмов',
     features: [
       'Скидки до 30%',
       '100+ ссылок в пакете',
@@ -52,7 +52,6 @@ export const Pricing: React.FC = () => {
     <section id="pricing" className="section" style={{ background: '#fafafa' }}>
       <div className="container">
         <ScrollReveal>
-          {/* Section Header */}
           <div className="text-center mb-16">
             <h2 className="h2 mb-4">Прозрачное ценообразование</h2>
             <p className="lead max-w-2xl mx-auto text-muted">
@@ -60,32 +59,33 @@ export const Pricing: React.FC = () => {
             </p>
           </div>
 
-          {/* Pricing Grid */}
-          <div className="grid-container">
+          <div className="grid-container" style={{ alignItems: 'stretch' }}>
             {pricingTiers.map((tier) => (
               <div
                 key={tier.name}
                 className="col-span-12 md:col-span-6 lg:col-span-4 reveal-child"
               >
-                <div
-                  className={tier.highlighted ? 'pricing-card-highlighted' : ''}
-                  style={{ height: '100%' }}
-                >
-                  <Card
-                    padding="lg"
-                    className={`h-full ${tier.highlighted ? 'card-featured' : ''}`}
-                  >
-                    <PricingCard tier={tier} highlighted={tier.highlighted} />
+                {tier.highlighted ? (
+                  /* Популярная карточка — поднята и акцентирована */
+                  <div className="pricing-featured-wrapper">
+                    <div className="pricing-featured-badge">Популярный</div>
+                    <Card padding="lg" className="h-full pricing-card-featured">
+                      <PricingCardContent tier={tier} highlighted />
+                    </Card>
+                  </div>
+                ) : (
+                  /* Обычные карточки — полная читаемость, без blur/scale */
+                  <Card padding="lg" className="h-full pricing-card-plain">
+                    <PricingCardContent tier={tier} highlighted={false} />
                   </Card>
-                </div>
+                )}
               </div>
             ))}
           </div>
 
-          {/* Bottom Note */}
           <div className="text-center mt-12">
             <p className="body-small" style={{ color: '#9aa4b8' }}>
-              Все цены указаны с учетом НДС. Безопасная оплата через ЮКасса.
+              Все цены указаны с учётом НДС. Безопасная оплата через ЮКасса.
             </p>
           </div>
         </ScrollReveal>
@@ -94,12 +94,14 @@ export const Pricing: React.FC = () => {
   );
 };
 
-interface PricingCardProps {
+interface PricingCardContentProps {
   tier: PricingTier;
   highlighted?: boolean;
 }
 
-const PricingCard: React.FC<PricingCardProps> = ({ tier, highlighted }) => {
+const PricingCardContent: React.FC<PricingCardContentProps> = ({ tier, highlighted }) => {
+  const isComingSoon = tier.price === 'Скоро';
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -115,7 +117,7 @@ const PricingCard: React.FC<PricingCardProps> = ({ tier, highlighted }) => {
           >
             {tier.price}
           </span>
-          {tier.price !== 'Скоро' && tier.price !== '0₽' && (
+          {!isComingSoon && tier.price !== '0₽' && (
             <span className="text-sm" style={{ color: '#9aa4b8' }}>
               /ссылка
             </span>
@@ -140,11 +142,14 @@ const PricingCard: React.FC<PricingCardProps> = ({ tier, highlighted }) => {
         ))}
       </ul>
 
-      {/* CTA */}
+      {/* Иерархия кнопок:
+          highlighted → primary (filled)
+          free tier   → secondary (outline)
+          coming soon → tertiary (ghost) */}
       <Button
-        variant={highlighted ? 'primary' : 'secondary'}
+        variant={highlighted ? 'primary' : isComingSoon ? 'tertiary' : 'secondary'}
         size="lg"
-        href="/register"
+        href={isComingSoon ? '#' : '/register'}
         className="w-full"
       >
         {tier.cta}
