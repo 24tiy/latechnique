@@ -8,6 +8,10 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --font-script: 'Dancing Script', cursive;
+}
+
 *,
 *::before,
 *::after {
@@ -30,8 +34,6 @@ body {
   line-height: 1.5;
   overflow-x: hidden;
   min-height: 100vh;
-
-  /* ── LIGHT / air.inc style background ── */
   background: #fafafa;
 }
 
@@ -45,23 +47,13 @@ body {
   color: var(--text, #0f1729);
 }
 
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f0f2f5;
-}
-
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #f0f2f5; }
 ::-webkit-scrollbar-thumb {
   background: rgba(15, 23, 41, 0.15);
   border-radius: 9999px;
 }
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(15, 23, 41, 0.25);
-}
+::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 41, 0.25); }
 
 :focus-visible {
   outline: 2px solid rgba(76, 150, 247, 0.7);
@@ -73,25 +65,15 @@ a {
   text-decoration: none;
   transition: opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
+a:hover { opacity: 0.7; }
 
-a:hover {
-  opacity: 0.7;
-}
-
-img,
-picture,
-video,
-canvas,
-svg {
+img, picture, video, canvas, svg {
   display: block;
   max-width: 100%;
   height: auto;
 }
 
-ul,
-ol {
-  list-style: none;
-}
+ul, ol { list-style: none; }
 
 h1, h2, h3, h4, h5, h6 {
   font-weight: inherit;
@@ -99,84 +81,20 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--text, #0f1729);
 }
 
-button {
-  font-family: inherit;
-  cursor: pointer;
-}
-
-[disabled] {
-  cursor: not-allowed;
-  opacity: 0.4;
-}
+button { font-family: inherit; cursor: pointer; }
+[disabled] { cursor: not-allowed; opacity: 0.4; }
 
 .sr-only {
   position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border-width: 0;
+  width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0);
+  white-space: nowrap; border-width: 0;
 }
 
-.truncate {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
+section { position: relative; }
 
-.line-clamp-3 {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* Ensure sections have right background */
-section {
-  position: relative;
-}
-
-/* Light theme override — sections after hero */
-#features,
-#pricing,
-#how-it-works {
-  background: #fafafa;
-}
-
-/* Alternating section backgrounds */
-#features { background: #fafafa; }
+#features  { background: #fafafa; }
 #how-it-works { background: #f4f7fb; }
-#pricing { background: #fafafa; }
-
-@media print {
-  *,
-  *::before,
-  *::after {
-    background: transparent !important;
-    color: #000 !important;
-    box-shadow: none !important;
-    text-shadow: none !important;
-  }
-
-  a, a:visited {
-    text-decoration: underline;
-  }
-
-  img {
-    page-break-inside: avoid;
-  }
-
-  h2, h3 {
-    page-break-after: avoid;
-  }
-}
+#pricing   { background: #fafafa; }
