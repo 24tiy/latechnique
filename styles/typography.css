@@ -1,6 +1,5 @@
 /* ========================================
-   TYPOGRAPHY SYSTEM
-   Dark text on white background — air.inc style
+   TYPOGRAPHY — Dark on white / air.inc
    ======================================== */
 
 .h1 {
@@ -63,37 +62,10 @@
   color: var(--text, #0f1729);
 }
 
-.body {
-  font-size: 1rem;
-  line-height: 1.5;
-  font-weight: 400;
-  margin: 0;
-  color: var(--text, #0f1729);
-}
-
-.body-large {
-  font-size: 1.125rem;
-  line-height: 1.6;
-  font-weight: 400;
-  margin: 0;
-  color: var(--text, #0f1729);
-}
-
-.body-small {
-  font-size: 0.875rem;
-  line-height: 1.5;
-  font-weight: 400;
-  margin: 0;
-  color: var(--text, #0f1729);
-}
-
-.body-xs {
-  font-size: 0.75rem;
-  line-height: 1.4;
-  font-weight: 400;
-  margin: 0;
-  color: var(--text, #0f1729);
-}
+.body        { font-size: 1rem;      line-height: 1.5; font-weight: 400; margin: 0; color: var(--text, #0f1729); }
+.body-large  { font-size: 1.125rem;  line-height: 1.6; font-weight: 400; margin: 0; color: var(--text, #0f1729); }
+.body-small  { font-size: 0.875rem;  line-height: 1.5; font-weight: 400; margin: 0; color: var(--text, #0f1729); }
+.body-xs     { font-size: 0.75rem;   line-height: 1.4; font-weight: 400; margin: 0; color: var(--text, #0f1729); }
 
 .label {
   font-size: 0.875rem;
@@ -121,17 +93,10 @@
   color: var(--text-secondary, #4a5568);
 }
 
-.text-balance {
-  text-wrap: balance;
-}
-
-.text-pretty {
-  text-wrap: pretty;
-}
-
-.text-uppercase {
-  text-transform: uppercase;
-}
+/* Утилиты */
+.text-balance  { text-wrap: balance; }
+.text-pretty   { text-wrap: pretty; }
+.text-uppercase { text-transform: uppercase; }
 
 .text-gradient {
   background: linear-gradient(135deg, #4c96f7, #8b5cf6);
@@ -145,16 +110,15 @@
   opacity: 1;
 }
 
+/* Рукописный/курсивный акцент — для смешанной типографики как у Air.inc */
+.text-script {
+  font-family: var(--font-script, 'Dancing Script', cursive);
+  font-style: normal;
+  font-weight: 700;
+}
+
 @media (max-width: 768px) {
-  .h1 {
-    font-size: clamp(2.5rem, 12vw, 5rem);
-  }
-
-  .h2 {
-    font-size: clamp(1.75rem, 6vw, 2.5rem);
-  }
-
-  .lead {
-    font-size: 1.125rem;
-  }
+  .h1   { font-size: clamp(2.5rem, 12vw, 5rem); }
+  .h2   { font-size: clamp(1.75rem, 6vw, 2.5rem); }
+  .lead { font-size: 1.125rem; }
 }
