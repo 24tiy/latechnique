@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Button } from '../design-system/Button';
 
@@ -8,7 +8,10 @@ const GlassScene = dynamic(() => import('./GlassScene'), {
   ssr: false,
   loading: () => (
     <div className="glass-loader">
-      <span>Загрузка 3D…</span>
+      <div className="glass-loader-brand">LaTechNique</div>
+      <div className="glass-loader-progress">
+        <div className="glass-loader-bar" />
+      </div>
     </div>
   ),
 });
@@ -18,9 +21,7 @@ export const Hero: React.FC = () => {
   const subRef = useRef<HTMLDivElement>(null);
   const hintRef = useRef<HTMLDivElement>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
-  const progressRef = useRef(0);
 
-  /* ═══════ GSAP ScrollTrigger ═══════ */
   useEffect(() => {
     let ctx: any;
 
@@ -33,40 +34,16 @@ export const Hero: React.FC = () => {
       if (!section) return;
 
       ctx = gsap.context(() => {
-        // Master scroll progress
+        // Scroll progress → 3D animation
         ScrollTrigger.create({
           trigger: section,
           start: 'top top',
           end: 'bottom bottom',
           scrub: true,
-          onUpdate: (self) => {
-            const p = self.progress;
-            progressRef.current = p;
-            setScrollProgress(p);
-          },
+          onUpdate: (self) => setScrollProgress(self.progress),
         });
 
-        // Subtitle reveal at ~65% progress
-        if (subRef.current) {
-          gsap.fromTo(
-            subRef.current,
-            { opacity: 0, y: 24 },
-            {
-              opacity: 1,
-              y: 0,
-              duration: 1,
-              ease: 'power3.out',
-              scrollTrigger: {
-                trigger: section,
-                start: '55% top',
-                end: '75% top',
-                scrub: 1,
-              },
-            }
-          );
-        }
-
-        // Scroll hint fades out quickly
+        // Scroll hint исчезает при первом скролле
         if (hintRef.current) {
           gsap.to(hintRef.current, {
             opacity: 0,
@@ -81,24 +58,34 @@ export const Hero: React.FC = () => {
           });
         }
       }, section);
+
+      // Subtitle появляется при загрузке страницы (НЕ при скролле)
+      if (subRef.current) {
+        gsap.fromTo(
+          subRef.current,
+          { opacity: 0, y: 28 },
+          { opacity: 1, y: 0, duration: 1.2, delay: 0.85, ease: 'power3.out' }
+        );
+      }
     };
 
     initGSAP();
-
     return () => ctx?.revert?.();
   }, []);
 
-  // Canvas wrapper follows sticky behavior based on progress
   const isDockedToHeader = scrollProgress >= 0.65;
 
   return (
     <section ref={sectionRef} className="hero-scroll-section">
       <div className="hero-sticky">
-        {/* Glass 3D canvas */}
-        <div className="glass-canvas-wrapper"
+        {/* 3D Glass Canvas */}
+        <div
+          className="glass-canvas-wrapper"
           style={{
             position: isDockedToHeader ? 'fixed' : 'absolute',
-            top: 0, left: 0, right: 0,
+            top: 0,
+            left: 0,
+            right: 0,
             height: isDockedToHeader ? 'var(--header-height)' : '100vh',
             zIndex: isDockedToHeader ? 100 : 1,
             pointerEvents: 'none',
@@ -108,6 +95,7 @@ export const Hero: React.FC = () => {
           <GlassScene scrollProgress={scrollProgress} />
         </div>
 
+        {/* Hero content — виден сразу при загрузке */}
         <div className="hero-overlay">
           <div className="hero-sub" ref={subRef}>
             <p className="hero-subtitle">
@@ -117,10 +105,14 @@ export const Hero: React.FC = () => {
               <Button variant="primary" size="lg" href="/register">
                 Начать бесплатно
               </Button>
+              <Button variant="secondary" size="lg" href="#features">
+                Как это работает
+              </Button>
             </div>
           </div>
         </div>
 
+        {/* Scroll hint с анимацией */}
         <div className="hero-scroll-hint" ref={hintRef}>
           <div className="hero-scroll-track">
             <div className="hero-scroll-dot" />
