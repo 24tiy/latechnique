@@ -35,16 +35,23 @@ const steps = [
   },
 ];
 
+const platforms = [
+  { name: 'TikTok', emoji: '🎵' },
+  { name: 'Instagram', emoji: '📸' },
+  { name: 'YouTube', emoji: '▶️' },
+  { name: 'VK', emoji: '🌐' },
+  { name: 'Telegram', emoji: '✈️' },
+  { name: 'Likee', emoji: '⭐' },
+];
+
+// Тройное дублирование для бесшовного marquee
+const marqueeItems = [...platforms, ...platforms, ...platforms];
+
 export const HowItWorks: React.FC = () => {
   return (
-    <section
-      id="how-it-works"
-      className="section"
-      style={{ background: '#f4f7fb' }}
-    >
+    <section id="how-it-works" className="section" style={{ background: '#f4f7fb' }}>
       <div className="container">
         <ScrollReveal>
-          {/* Section Header */}
           <div className="text-center mb-16">
             <h2 className="h2 mb-4">Как это работает</h2>
             <p className="lead max-w-2xl mx-auto text-muted">
@@ -52,16 +59,11 @@ export const HowItWorks: React.FC = () => {
             </p>
           </div>
 
-          {/* Steps */}
           <div className="grid-container">
             {steps.map((step) => (
-              <div
-                key={step.number}
-                className="col-span-12 lg:col-span-4 reveal-child"
-              >
+              <div key={step.number} className="col-span-12 lg:col-span-4 reveal-child">
                 <Card padding="lg" className="h-full">
                   <div className="flex flex-col gap-4">
-                    {/* Icon & Number */}
                     <div className="flex items-center gap-4">
                       <div
                         className="w-12 h-12 rounded-xl flex items-center justify-center"
@@ -76,11 +78,9 @@ export const HowItWorks: React.FC = () => {
                         {step.number}
                       </span>
                     </div>
-
-                    {/* Title */}
-                    <h3 className="h4" style={{ color: '#0f1729' }}>{step.title}</h3>
-
-                    {/* Description */}
+                    <h3 className="h4" style={{ color: '#0f1729' }}>
+                      {step.title}
+                    </h3>
                     <p className="body-small" style={{ color: '#9aa4b8' }}>
                       {step.description}
                     </p>
@@ -89,32 +89,22 @@ export const HowItWorks: React.FC = () => {
               </div>
             ))}
           </div>
-
-          {/* Supported Platforms */}
-          <div className="mt-20 text-center">
-            <p className="body-small mb-8" style={{ color: '#9aa4b8' }}>
-              Поддерживаемые платформы:
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              {['TikTok', 'Instagram', 'YouTube', 'VK', 'Telegram', 'Likee'].map(
-                (platform) => (
-                  <div
-                    key={platform}
-                    className="px-5 py-2 rounded-full font-medium text-sm"
-                    style={{
-                      background: '#ffffff',
-                      border: '1px solid rgba(15, 23, 41, 0.1)',
-                      color: '#4a5568',
-                      boxShadow: '0 1px 3px rgba(15,23,41,0.06)',
-                    }}
-                  >
-                    {platform}
-                  </div>
-                )
-              )}
-            </div>
-          </div>
         </ScrollReveal>
+      </div>
+
+      {/* Бесконечная лента платформ */}
+      <div className="platforms-marquee-wrapper">
+        <p className="platforms-marquee-label">Поддерживаемые платформы</p>
+        <div className="platforms-marquee">
+          <div className="platforms-marquee-track">
+            {marqueeItems.map((p, i) => (
+              <div key={i} className="platforms-marquee-item">
+                <span className="platforms-emoji">{p.emoji}</span>
+                <span className="platforms-name">{p.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </section>
   );
