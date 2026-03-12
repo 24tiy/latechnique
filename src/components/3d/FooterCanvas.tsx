@@ -7,6 +7,8 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 gsap.registerPlugin(ScrollTrigger);
 
+const BASE = import.meta.env.BASE_URL;
+
 function FooterGlassText({ progress }: { progress: React.MutableRefObject<{ v: number }> }) {
   const groupRef = useRef<THREE.Group>(null);
 
@@ -16,17 +18,13 @@ function FooterGlassText({ progress }: { progress: React.MutableRefObject<{ v: n
 
     const sp = p * p * (3 - 2 * p);
 
-    // Spins in reverse direction, completes by 80%
     const rotP = Math.min(sp / 0.8, 1);
     groupRef.current.rotation.y = (1 - rotP) * Math.PI * 4;
     
-    // Scale from small to full
     groupRef.current.scale.setScalar(THREE.MathUtils.lerp(0.15, 1, sp));
     
-    // Start above camera view, descend to center
     groupRef.current.position.y = THREE.MathUtils.lerp(3.5, 0, sp);
     
-    // Come from behind camera toward center
     groupRef.current.position.z = THREE.MathUtils.lerp(-20, 0, sp);
   });
 
@@ -34,7 +32,7 @@ function FooterGlassText({ progress }: { progress: React.MutableRefObject<{ v: n
     <group ref={groupRef}>
       <Center>
         <Text3D
-          font="/fonts/great_vibes.typeface.json"
+          font={`${BASE}fonts/great_vibes.typeface.json`}
           size={1.3}
           height={0.05}
           bevelEnabled
