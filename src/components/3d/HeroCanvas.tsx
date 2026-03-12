@@ -1,5 +1,5 @@
 import { Suspense, useRef, useMemo } from 'react';
-import { Canvas, useFrame, useThree, useLoader } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import {
   Center,
   Text3D,
@@ -7,6 +7,7 @@ import {
 } from '@react-three/drei';
 import * as THREE from 'three';
 
+const BASE = import.meta.env.BASE_URL;
 
 type ProgressRef = React.MutableRefObject<{ v: number }>;
 
@@ -26,22 +27,16 @@ function GlassText({ progress }: { progress: ProgressRef }) {
     if (!groupRef.current) return;
     const p = progress.current.v;
 
-    // 1 full rotation (360°), completes by p=0.8
     const rotP = Math.min(p / 0.8, 1);
     const easedRot = rotP * rotP * (3 - 2 * rotP);
     groupRef.current.rotation.y = easedRot * Math.PI * 2;
 
-    // Scale: 1 → 0.14
     const cappedP = Math.min(p, 1);
     const scale = THREE.MathUtils.lerp(1, 0.14, cappedP);
     groupRef.current.scale.setScalar(scale);
 
-    // Rise to navbar: camera fov=40 at z=8.5 → visible top ≈ y=3.09, so y=2.7 sits in navbar zone
     groupRef.current.position.set(0, cappedP * 2.7, 0);
 
-    // Whitening starts on halfway through (p=0.4)
-    // First half (p 0→0.4) = pure glass
-    // Second half (p 0.4→0.8) = glass → white
     const whiteP = THREE.MathUtils.clamp((p - 0.4) / 0.4, 0, 1);
     const easedWhite = whiteP * whiteP * (3 - 2 * whiteP);
 
@@ -61,7 +56,7 @@ function GlassText({ progress }: { progress: ProgressRef }) {
     <group ref={groupRef}>
       <Center>
         <Text3D
-          font="/fonts/dancing_script.typeface.json"
+          font={`${BASE}fonts/dancing_script.typeface.json`}
           size={1.5}
           height={0.18}
           bevelEnabled
@@ -126,7 +121,7 @@ function GlassEdge({ progress }: { progress: ProgressRef }) {
     <group ref={groupRef}>
       <Center>
         <Text3D
-          font="/fonts/dancing_script.typeface.json"
+          font={`${BASE}fonts/dancing_script.typeface.json`}
           size={1.5}
           height={0.18}
           bevelEnabled
@@ -169,7 +164,6 @@ function Sparkles({ progress }: { progress: ProgressRef }) {
     }
     pointsRef.current.geometry.attributes.position.needsUpdate = true;
     
-    // Fade out sparkles as user scrolls down
     const mat = pointsRef.current.material as THREE.PointsMaterial;
     mat.opacity = THREE.MathUtils.lerp(0.4, 0, Math.min(progress.current.v * 2, 1));
   });
@@ -235,7 +229,6 @@ export default function HeroCanvas() {
         <pointLight position={[0, 1, 8]} intensity={2} color="#ffffff" />
         <pointLight position={[2, -1, -3]} intensity={1.5} color="#80c0ff" />
 
-        
         <GlassEdge progress={progress} />
         <GlassText progress={progress} />
         <Sparkles progress={progress} />
