@@ -3,7 +3,7 @@ import MeadowScene from "@/components/3d/MeadowScene";
 
 const Footer = () => {
   return (
-    <footer className="relative z-20 h-screen">
+    <footer className="relative z-20 h-screen overflow-hidden">
       {/* Sky gradient */}
       <div
         className="absolute inset-0 z-[0]"
@@ -23,8 +23,15 @@ const Footer = () => {
         <FooterCanvas />
       </div>
 
-      {/* Meadow */}
-      <div className="absolute bottom-0 left-0 right-0 h-[50%] z-[3]">
+      {/* 
+        Meadow canvas — occupies bottom 55% but pushed DOWN 30% 
+        so roots overflow below the footer edge (hidden by overflow-hidden).
+        Only grass tips + mid-section visible.
+      */}
+      <div
+        className="absolute left-0 right-0 h-[55%] z-[3]"
+        style={{ bottom: '-25%' }}
+      >
         <MeadowScene />
       </div>
     </footer>
