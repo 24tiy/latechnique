@@ -7,28 +7,33 @@ const footerLinks2 = ["Status ↗", "Help Center ↗", "Manage Cookies"];
 const Footer = () => {
   return (
     <footer className="relative overflow-hidden z-20">
-      {/* Full-viewport meadow scene */}
       <div className="relative h-screen">
-        {/* Three.js Meadow — grass, mushrooms, butterflies, pollen */}
-        <div className="absolute inset-0 z-[1]">
-          <MeadowScene />
-        </div>
+        {/* Sky gradient background — matches page sky at top, transitions to green at bottom */}
+        <div
+          className="absolute inset-0 z-[0]"
+          style={{
+            background: `linear-gradient(180deg,
+              hsl(206, 50%, 84%) 0%,
+              hsl(200, 55%, 78%) 20%,
+              hsl(140, 40%, 60%) 55%,
+              hsl(120, 45%, 35%) 80%,
+              hsl(120, 50%, 20%) 100%
+            )`,
+          }}
+        />
 
-        {/* 3D Glass text floating above meadow */}
+        {/* 3D Glass text — in the sky area (upper portion) */}
         <div className="absolute inset-0 z-[6]">
           <FooterCanvas />
         </div>
 
-        {/* Sky gradient overlay at top for smooth transition from page */}
-        <div
-          className="absolute top-0 left-0 right-0 h-[30%] z-[2] pointer-events-none"
-          style={{
-            background: 'linear-gradient(180deg, hsl(206, 50%, 84%) 0%, transparent 100%)',
-          }}
-        />
+        {/* Meadow canvas — bottom 45% of the footer viewport */}
+        <div className="absolute bottom-0 left-0 right-0 h-[45%] z-[3]">
+          <MeadowScene />
+        </div>
 
-        {/* Solid green fill at the very bottom to blend with links bar */}
-        <div className="absolute bottom-0 left-0 right-0 h-[6%] bg-[#1a5c10] z-[2]" />
+        {/* Green fill at very bottom to blend into links bar */}
+        <div className="absolute bottom-0 left-0 right-0 h-[3%] bg-[#1a5510] z-[4]" />
       </div>
 
       {/* Footer links bar */}
