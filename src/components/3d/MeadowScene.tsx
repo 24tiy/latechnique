@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { Suspense } from 'react';
 
 /* ═══════════════════════════════════════════════════════
-   RESPONSIVE HELPER
+   RESPONSIVE
    ═══════════════════════════════════════════════════════ */
 function getDeviceTier(): 'mobile' | 'tablet' | 'desktop' {
   if (typeof window === 'undefined') return 'desktop';
@@ -15,831 +15,448 @@ function getDeviceTier(): 'mobile' | 'tablet' | 'desktop' {
 }
 
 /* ═══════════════════════════════════════════════════════
-   TUNABLE PARAMETERS
+   CONFIG
    ═══════════════════════════════════════════════════════ */
 function getCfg() {
   const tier = getDeviceTier();
-
-  const densityMult = tier === 'mobile' ? 0.3 : tier === 'tablet' ? 0.6 : 1.0;
+  const d = tier === 'mobile' ? 0.35 : tier === 'tablet' ? 0.6 : 1.0;
 
   return {
-    grassLayers: [
-      {
-        bladeCount: Math.floor(3000 * densityMult),
-        fieldWidth: 28,
-        fieldDepthMin: -1.0,
-        fieldDepthMax: 3.0,
-        heightMin: 0.4,
-        heightMax: 1.1,
-        bladeWidth: 0.018,
-        colorBase: new THREE.Color('#2e6b28'),
-        colorMid: new THREE.Color('#4a8e3e'),
-        colorTip: new THREE.Color('#8cc46a'),
-        colorDark: new THREE.Color('#1a3e16'),
-        windMult: 1.0,
-        yOffset: -0.6,
-      },
-      {
-        bladeCount: Math.floor(2200 * densityMult),
-        fieldWidth: 30,
-        fieldDepthMin: -3.5,
-        fieldDepthMax: -1.0,
-        heightMin: 0.3,
-        heightMax: 0.8,
-        bladeWidth: 0.015,
-        colorBase: new THREE.Color('#3a7832'),
-        colorMid: new THREE.Color('#5c9e4c'),
-        colorTip: new THREE.Color('#9aca78'),
-        colorDark: new THREE.Color('#234a1c'),
-        windMult: 0.8,
-        yOffset: -0.6,
-      },
-      {
-        bladeCount: Math.floor(1500 * densityMult),
-        fieldWidth: 34,
-        fieldDepthMin: -7.0,
-        fieldDepthMax: -3.5,
-        heightMin: 0.2,
-        heightMax: 0.55,
-        bladeWidth: 0.012,
-        colorBase: new THREE.Color('#4a8640'),
-        colorMid: new THREE.Color('#6eaa5e'),
-        colorTip: new THREE.Color('#a8c890'),
-        colorDark: new THREE.Color('#305828'),
-        windMult: 0.6,
-        yOffset: -0.6,
-      },
-    ],
+    grass: {
+      foreCount: Math.floor(8000 * d),
+      foreWidth: 30, foreDepthMin: -2, foreDepthMax: 4,
+      foreHMin: 0.15, foreHMax: 0.45, foreBladeW: 0.012,
 
-    windStrength: 0.8,
-    windSpeed: 0.6,
-    gustInterval: 7.0,
-    gustDuration: 3.0,
+      midCount: Math.floor(5000 * d),
+      midWidth: 34, midDepthMin: -6, midDepthMax: -2,
+      midHMin: 0.1, midHMax: 0.3, midBladeW: 0.01,
 
-    mushroomMaxCount: tier === 'mobile' ? 3 : 5,
-    mushroomSpawnInterval: 4.0,
-    mushroomGrowDuration: 2.5,
-    mushroomVisibleDuration: 6.0,
-    mushroomShrinkDuration: 3.0,
-
-    butterflyCount: tier === 'mobile' ? 1 : tier === 'tablet' ? 2 : 3,
-    butterflySpeed: 0.3,
-    butterflyWingFlapSpeed: 5.0,
-    butterflyInfluenceRadius: 1.5,
-    butterflyInfluenceStrength: 0.4,
-
-    particleCount: tier === 'mobile' ? 20 : tier === 'tablet' ? 35 : 50,
-    particleSpeed: 0.05,
-    particleSpread: { x: 20, y: 3.5, z: 8 },
-
-    fogColor: new THREE.Color('#7ab882'),
-    fogNear: 5,
-    fogFar: 14,
-    groundColor: '#2a5c22',
+      farCount: Math.floor(3000 * d),
+      farWidth: 38, farDepthMin: -12, farDepthMax: -6,
+      farHMin: 0.06, farHMax: 0.2, farBladeW: 0.008,
+    },
+    wind: { strength: 0.6, speed: 0.5, gustInterval: 7, gustDuration: 3 },
+    mushroom: { count: tier === 'mobile' ? 3 : 5, spawnInterval: 4, growDur: 2.5, visibleDur: 6, shrinkDur: 3 },
+    butterfly: { count: tier === 'mobile' ? 1 : tier === 'tablet' ? 2 : 3, speed: 0.25, flapSpeed: 5, radius: 1.2, push: 0.3 },
+    pollen: { count: tier === 'mobile' ? 15 : tier === 'tablet' ? 30 : 50, speed: 0.04, spread: { x: 22, y: 2.5, z: 10 } },
   };
 }
 
 /* ═══════════════════════════════════════════════════════
-   GRASS SHADERS
+   GRASS VERTEX SHADER
    ═══════════════════════════════════════════════════════ */
-const grassVertexShader = /* glsl */ `
+const grassVS = /* glsl */ `
   uniform float uTime;
-  uniform float uWindStrength;
-  uniform float uWindSpeed;
-  uniform float uWindMult;
+  uniform float uWindStr;
+  uniform float uWindSpd;
+  uniform float uWindMul;
   uniform float uGustPhase;
   uniform vec2 uGustCenter;
-  uniform vec3 uButterflies[3];
-  uniform float uButterflyRadius;
-  uniform float uButterflyPush;
+  uniform vec3 uBfly[3];
+  uniform float uBflyR;
+  uniform float uBflyP;
 
-  varying vec2 vUv;
-  varying float vHeight;
+  varying float vH;
   varying float vAO;
+  varying vec2 vUv;
 
-  vec3 mod289v(vec3 x) { return x - floor(x * (1.0/289.0)) * 289.0; }
-  vec2 mod289v2(vec2 x) { return x - floor(x * (1.0/289.0)) * 289.0; }
-  vec3 permutev(vec3 x) { return mod289v(((x*34.0)+1.0)*x); }
+  vec3 mod289(vec3 x){return x-floor(x*(1./289.))*289.;}
+  vec2 mod289v2(vec2 x){return x-floor(x*(1./289.))*289.;}
+  vec3 perm(vec3 x){return mod289(((x*34.)+1.)*x);}
 
-  float snoise(vec2 v) {
-    const vec4 C = vec4(0.211324865405187, 0.366025403784439,
-                       -0.577350269189626, 0.024390243902439);
-    vec2 i = floor(v + dot(v, C.yy));
-    vec2 x0 = v - i + dot(i, C.xx);
-    vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
-    vec4 x12 = x0.xyxy + C.xxzz;
-    x12.xy -= i1;
-    i = mod289v2(i);
-    vec3 p = permutev(permutev(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
-    vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
-    m = m*m; m = m*m;
-    vec3 x = 2.0 * fract(p * C.www) - 1.0;
-    vec3 h = abs(x) - 0.5;
-    vec3 ox = floor(x + 0.5);
-    vec3 a0 = x - ox;
-    m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h);
+  float snoise(vec2 v){
+    const vec4 C=vec4(.211324865,.366025403,-.577350269,.024390243);
+    vec2 i=floor(v+dot(v,C.yy));
+    vec2 x0=v-i+dot(i,C.xx);
+    vec2 i1=(x0.x>x0.y)?vec2(1,0):vec2(0,1);
+    vec4 x12=x0.xyxy+C.xxzz; x12.xy-=i1;
+    i=mod289v2(i);
+    vec3 p=perm(perm(i.y+vec3(0,i1.y,1))+i.x+vec3(0,i1.x,1));
+    vec3 m=max(.5-vec3(dot(x0,x0),dot(x12.xy,x12.xy),dot(x12.zw,x12.zw)),0.);
+    m=m*m;m=m*m;
+    vec3 x=2.*fract(p*C.www)-1.;
+    vec3 h=abs(x)-.5;
+    vec3 ox=floor(x+.5);
+    vec3 a0=x-ox;
+    m*=1.79284291400159-.85373472095314*(a0*a0+h*h);
     vec3 g;
-    g.x = a0.x * x0.x + h.x * x0.y;
-    g.yz = a0.yz * x12.xz + h.yz * x12.yw;
-    return 130.0 * dot(m, g);
+    g.x=a0.x*x0.x+h.x*x0.y;
+    g.yz=a0.yz*x12.xz+h.yz*x12.yw;
+    return 130.*dot(m,g);
   }
 
-  vec2 butterflyPush(vec3 worldPos, vec3 bPos) {
-    vec2 delta = worldPos.xz - bPos.xz;
-    float dist = length(delta);
-    if (dist > uButterflyRadius || dist < 0.01) return vec2(0.0);
-    float influence = (1.0 - dist / uButterflyRadius);
-    influence = influence * influence * uButterflyPush;
-    float yFade = 1.0 - smoothstep(0.0, 1.2, abs(worldPos.y - bPos.y));
-    return normalize(delta) * influence * max(yFade, 0.0);
+  vec2 bflyPush(vec3 wp,vec3 bp){
+    vec2 dd=wp.xz-bp.xz;
+    float dist=length(dd);
+    if(dist>uBflyR||dist<.01)return vec2(0);
+    float inf=(1.-dist/uBflyR);
+    inf=inf*inf*uBflyP;
+    float yf=1.-smoothstep(0.,1.,abs(wp.y-bp.y));
+    return normalize(dd)*inf*max(yf,0.);
   }
 
-  void main() {
-    vUv = uv;
-    vHeight = uv.y;
-
-    vec3 pos = position;
-
-    // Quadratic bend factor — bottom stable, tip bends most
-    float bendFactor = uv.y * uv.y;
-
-    // Multi-layer wind
-    float t = uTime * uWindSpeed;
-    float w1 = snoise(vec2(pos.x * 0.2 + t * 0.5, pos.z * 0.2 + t * 0.15)) * 0.55;
-    float w2 = snoise(vec2(pos.x * 0.5 + t * 0.9, pos.z * 0.35 + t * 0.3)) * 0.25;
-    float w3 = snoise(vec2(pos.x * 1.2 + t * 1.8, pos.z * 0.8 + t * 0.08)) * 0.12;
-
-    float totalWind = (w1 + w2 + w3) * uWindStrength * uWindMult;
-
-    // Gust wave
-    float gustDist = length(pos.xz - uGustCenter);
-    float gustWave = smoothstep(10.0, 0.0, gustDist) * uGustPhase;
-    totalWind += gustWave * uWindStrength * 1.5;
-
-    // Apply bend
-    pos.x += totalWind * bendFactor;
-    pos.z += totalWind * bendFactor * 0.2;
-    pos.y -= abs(totalWind) * bendFactor * 0.08;
-
-    // Butterfly disturbance
-    vec2 bPush = vec2(0.0);
-    for (int i = 0; i < 3; i++) {
-      bPush += butterflyPush(pos, uButterflies[i]);
-    }
-    pos.x += bPush.x * bendFactor;
-    pos.z += bPush.y * bendFactor;
-
-    vAO = smoothstep(0.0, 0.3, uv.y);
-
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+  void main(){
+    vUv=uv; vH=uv.y;
+    vec3 pos=position;
+    float bend=uv.y*uv.y;
+    float t=uTime*uWindSpd;
+    float w1=snoise(vec2(pos.x*.15+t*.4,pos.z*.15+t*.1))*.5;
+    float w2=snoise(vec2(pos.x*.4+t*.7,pos.z*.3+t*.25))*.2;
+    float w3=snoise(vec2(pos.x*1.+t*1.5,pos.z*.7))*.08;
+    float tw=(w1+w2+w3)*uWindStr*uWindMul;
+    float gd=length(pos.xz-uGustCenter);
+    float gw=smoothstep(12.,0.,gd)*uGustPhase;
+    tw+=gw*uWindStr*1.3;
+    pos.x+=tw*bend;
+    pos.z+=tw*bend*.15;
+    pos.y-=abs(tw)*bend*.06;
+    vec2 bp=vec2(0);
+    for(int i=0;i<3;i++) bp+=bflyPush(pos,uBfly[i]);
+    pos.x+=bp.x*bend;
+    pos.z+=bp.y*bend;
+    vAO=smoothstep(0.,.25,uv.y);
+    gl_Position=projectionMatrix*modelViewMatrix*vec4(pos,1.);
   }
 `;
 
-const grassFragmentShader = /* glsl */ `
-  varying vec2 vUv;
-  varying float vHeight;
+const grassFS = /* glsl */ `
+  varying float vH;
   varying float vAO;
-
-  uniform vec3 uColorBase;
-  uniform vec3 uColorMid;
-  uniform vec3 uColorTip;
-  uniform vec3 uColorDark;
+  varying vec2 vUv;
+  uniform vec3 uCBase;
+  uniform vec3 uCMid;
+  uniform vec3 uCTip;
+  uniform vec3 uCDark;
   uniform float uTime;
 
-  void main() {
-    // Natural gradient: dark base → green → bright tip
-    vec3 color = mix(uColorDark, uColorBase, smoothstep(0.0, 0.15, vHeight));
-    color = mix(color, uColorMid, smoothstep(0.15, 0.5, vHeight));
-    color = mix(color, uColorTip, smoothstep(0.5, 1.0, vHeight));
-
-    // AO darken at roots
-    color *= mix(0.35, 1.0, vAO);
-
-    // Very subtle tip shimmer
-    float shimmer = sin(vUv.x * 50.0 + uTime * 0.3) * 0.015 + 0.015;
-    color += shimmer * smoothstep(0.65, 1.0, vHeight);
-
-    // Soft tip transparency for natural look
-    float alpha = mix(1.0, 0.75, smoothstep(0.8, 1.0, vHeight));
-
-    gl_FragColor = vec4(color, alpha);
+  void main(){
+    vec3 c=mix(uCDark,uCBase,smoothstep(0.,.12,vH));
+    c=mix(c,uCMid,smoothstep(.12,.45,vH));
+    c=mix(c,uCTip,smoothstep(.45,1.,vH));
+    c*=mix(.4,1.,vAO);
+    c+=.01*smoothstep(.7,1.,vH);
+    float a=mix(1.,.7,smoothstep(.85,1.,vH));
+    gl_FragColor=vec4(c,a);
   }
 `;
 
 /* ═══════════════════════════════════════════════════════
-   GRASS BLADE GEOMETRY — thin, curved, tapered
+   BLADE GEOMETRY — 8 segments, smooth thin tapered curved
    ═══════════════════════════════════════════════════════ */
-function createBladeGeometry(bladeWidth: number): THREE.BufferGeometry {
-  const segments = 6;
-  const vertices: number[] = [];
+function makeBlade(w: number): THREE.BufferGeometry {
+  const segs = 8;
+  const verts: number[] = [];
   const uvs: number[] = [];
-  const indices: number[] = [];
-
-  for (let i = 0; i <= segments; i++) {
-    const t = i / segments;
-    // Strong taper: full width at base, nearly 0 at tip
-    const width = bladeWidth * (1 - t * 0.92);
-    // Slight natural curve forward
-    const curve = t * t * t * 0.06;
-    // Slight S-curve for realism
-    const sCurve = Math.sin(t * Math.PI) * 0.008;
-
-    vertices.push(-width + curve + sCurve, t, 0);
-    vertices.push(width + curve + sCurve, t, 0);
+  const idx: number[] = [];
+  for (let i = 0; i <= segs; i++) {
+    const t = i / segs;
+    const hw = w * (1 - t * 0.95) * 0.5;
+    const curve = t * t * 0.04;
+    const s = Math.sin(t * Math.PI * 0.8) * 0.003;
+    verts.push(-hw + s, t, curve);
+    verts.push(hw + s, t, curve);
     uvs.push(0, t);
     uvs.push(1, t);
-
-    if (i < segments) {
-      const base = i * 2;
-      indices.push(base, base + 1, base + 2);
-      indices.push(base + 1, base + 3, base + 2);
-    }
+    if (i < segs) { const b = i * 2; idx.push(b, b+1, b+2, b+1, b+3, b+2); }
   }
-
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-  geo.setIndex(indices);
-  geo.computeVertexNormals();
-  return geo;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
 }
 
 /* ═══════════════════════════════════════════════════════
    SHARED STATE
    ═══════════════════════════════════════════════════════ */
-const butterflyPositions = [
-  new THREE.Vector3(999, 999, 999),
-  new THREE.Vector3(999, 999, 999),
-  new THREE.Vector3(999, 999, 999),
-];
-
-const gustState = {
-  phase: 0,
-  timer: 0,
-  active: false,
-  center: new THREE.Vector2(0, -2),
-};
+const bflyPos = [new THREE.Vector3(999,999,999), new THREE.Vector3(999,999,999), new THREE.Vector3(999,999,999)];
+const gust = { phase: 0, timer: 0, active: false, center: new THREE.Vector2(0, 0) };
 
 /* ═══════════════════════════════════════════════════════
    GRASS LAYER
    ═══════════════════════════════════════════════════════ */
-function GrassLayer({ layerConfig }: { layerConfig: ReturnType<typeof getCfg>['grassLayers'][0] }) {
-  const layer = layerConfig;
+interface LayerProps {
+  count: number; fieldW: number; depthMin: number; depthMax: number;
+  hMin: number; hMax: number; bladeW: number;
+  colorBase: string; colorMid: string; colorTip: string; colorDark: string;
+  windMul: number;
+}
+
+function GrassLayer(p: LayerProps) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const cfg = useMemo(() => getCfg(), []);
-
-  const bladeGeo = useMemo(() => createBladeGeometry(layer.bladeWidth), [layer.bladeWidth]);
-
-  const shaderMat = useMemo(() => new THREE.ShaderMaterial({
-    vertexShader: grassVertexShader,
-    fragmentShader: grassFragmentShader,
+  const geo = useMemo(() => makeBlade(p.bladeW), [p.bladeW]);
+  const mat = useMemo(() => new THREE.ShaderMaterial({
+    vertexShader: grassVS, fragmentShader: grassFS,
     uniforms: {
-      uTime: { value: 0 },
-      uWindStrength: { value: cfg.windStrength },
-      uWindSpeed: { value: cfg.windSpeed },
-      uWindMult: { value: layer.windMult },
-      uGustPhase: { value: 0 },
-      uGustCenter: { value: new THREE.Vector2(0, -2) },
-      uButterflies: { value: [
-        new THREE.Vector3(999, 999, 999),
-        new THREE.Vector3(999, 999, 999),
-        new THREE.Vector3(999, 999, 999),
-      ]},
-      uButterflyRadius: { value: cfg.butterflyInfluenceRadius },
-      uButterflyPush: { value: cfg.butterflyInfluenceStrength },
-      uColorBase: { value: layer.colorBase },
-      uColorMid: { value: layer.colorMid },
-      uColorTip: { value: layer.colorTip },
-      uColorDark: { value: layer.colorDark },
+      uTime: { value: 0 }, uWindStr: { value: cfg.wind.strength }, uWindSpd: { value: cfg.wind.speed },
+      uWindMul: { value: p.windMul }, uGustPhase: { value: 0 }, uGustCenter: { value: new THREE.Vector2(0, 0) },
+      uBfly: { value: [new THREE.Vector3(999,999,999), new THREE.Vector3(999,999,999), new THREE.Vector3(999,999,999)] },
+      uBflyR: { value: cfg.butterfly.radius }, uBflyP: { value: cfg.butterfly.push },
+      uCBase: { value: new THREE.Color(p.colorBase) }, uCMid: { value: new THREE.Color(p.colorMid) },
+      uCTip: { value: new THREE.Color(p.colorTip) }, uCDark: { value: new THREE.Color(p.colorDark) },
     },
-    side: THREE.DoubleSide,
-    transparent: true,
-    depthWrite: true,
-  }), [layer, cfg]);
+    side: THREE.DoubleSide, transparent: true,
+  }), [p, cfg]);
 
-  const initialized = useRef(false);
-
+  const inited = useRef(false);
   useFrame(({ clock }) => {
     if (!meshRef.current) return;
-
-    if (!initialized.current) {
-      const dummy = new THREE.Object3D();
-      for (let i = 0; i < layer.bladeCount; i++) {
-        const x = (Math.random() - 0.5) * layer.fieldWidth;
-        const z = layer.fieldDepthMin + Math.random() * (layer.fieldDepthMax - layer.fieldDepthMin);
-        const height = layer.heightMin + Math.random() * (layer.heightMax - layer.heightMin);
-        const rotY = Math.random() * Math.PI;
-        const lean = (Math.random() - 0.5) * 0.2;
-        const widthScale = 0.7 + Math.random() * 0.6;
-
-        dummy.position.set(x, layer.yOffset, z);
-        dummy.rotation.set(lean, rotY, 0);
-        dummy.scale.set(widthScale, height, 1);
-        dummy.updateMatrix();
-        meshRef.current!.setMatrixAt(i, dummy.matrix);
+    if (!inited.current) {
+      const d = new THREE.Object3D();
+      for (let i = 0; i < p.count; i++) {
+        const x = (Math.random() - 0.5) * p.fieldW;
+        const z = p.depthMin + Math.random() * (p.depthMax - p.depthMin);
+        const h = p.hMin + Math.random() * (p.hMax - p.hMin);
+        d.position.set(x, 0, z);
+        d.rotation.set((Math.random() - 0.5) * 0.25, Math.random() * Math.PI, 0);
+        d.scale.set(0.6 + Math.random() * 0.8, h, 1);
+        d.updateMatrix();
+        meshRef.current!.setMatrixAt(i, d.matrix);
       }
       meshRef.current.instanceMatrix.needsUpdate = true;
-      initialized.current = true;
+      inited.current = true;
     }
-
-    const u = shaderMat.uniforms;
+    const u = mat.uniforms;
     u.uTime.value = clock.elapsedTime;
-    u.uGustPhase.value = gustState.phase;
-    u.uGustCenter.value.copy(gustState.center);
-    u.uButterflies.value[0].copy(butterflyPositions[0]);
-    u.uButterflies.value[1].copy(butterflyPositions[1]);
-    u.uButterflies.value[2].copy(butterflyPositions[2]);
+    u.uGustPhase.value = gust.phase;
+    u.uGustCenter.value.copy(gust.center);
+    for (let i = 0; i < 3; i++) u.uBfly.value[i].copy(bflyPos[i]);
   });
-
-  return (
-    <instancedMesh
-      ref={meshRef}
-      args={[bladeGeo, shaderMat, layer.bladeCount]}
-      frustumCulled={false}
-    />
-  );
+  return <instancedMesh ref={meshRef} args={[geo, mat, p.count]} frustumCulled={false} />;
 }
 
 /* ═══════════════════════════════════════════════════════
-   WIND GUST CONTROLLER
+   GUST
    ═══════════════════════════════════════════════════════ */
-function WindGustController() {
+function GustCtrl() {
   const cfg = useMemo(() => getCfg(), []);
-
-  useFrame((_, delta) => {
-    const dt = Math.min(delta, 0.05);
-    gustState.timer += dt;
-
-    if (!gustState.active) {
-      if (gustState.timer >= cfg.gustInterval) {
-        gustState.active = true;
-        gustState.timer = 0;
-        gustState.center.set(
-          (Math.random() - 0.5) * 16,
-          -Math.random() * 5 - 1
-        );
-      }
+  useFrame((_, dt) => {
+    const d = Math.min(dt, 0.05); gust.timer += d;
+    if (!gust.active) {
+      if (gust.timer >= cfg.wind.gustInterval) { gust.active = true; gust.timer = 0; gust.center.set((Math.random()-.5)*18, -Math.random()*6); }
     } else {
-      const t = gustState.timer / cfg.gustDuration;
-      if (t >= 1) {
-        gustState.active = false;
-        gustState.phase = 0;
-        gustState.timer = Math.random() * 2;
-      } else {
-        gustState.phase = Math.sin(t * Math.PI) * 0.7;
-      }
+      const t = gust.timer / cfg.wind.gustDuration;
+      if (t >= 1) { gust.active = false; gust.phase = 0; gust.timer = Math.random()*2; }
+      else gust.phase = Math.sin(t * Math.PI) * 0.6;
     }
   });
   return null;
 }
 
 /* ═══════════════════════════════════════════════════════
-   MUSHROOM SYSTEM
+   MUSHROOMS
    ═══════════════════════════════════════════════════════ */
-interface MushroomState {
-  position: THREE.Vector3;
-  phase: 'growing' | 'visible' | 'shrinking' | 'dormant';
-  timer: number;
-  maxScale: number;
-  currentScale: number;
-  colorIdx: number;
-}
+interface MushState { pos: THREE.Vector3; phase: 'dormant'|'growing'|'visible'|'shrinking'; timer: number; maxS: number; curS: number; ci: number; }
 
-function MushroomSystem() {
-  const groupRef = useRef<THREE.Group>(null);
-  const mushrooms = useRef<MushroomState[]>([]);
+function Mushrooms() {
+  const grp = useRef<THREE.Group>(null);
+  const ms = useRef<MushState[]>([]);
   const cfg = useMemo(() => getCfg(), []);
-
-  const { capGeo, stemGeo, dotGeo } = useMemo(() => {
-    const cap = new THREE.SphereGeometry(0.08, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.55);
-    const stem = new THREE.CylinderGeometry(0.018, 0.025, 0.09, 6);
-    stem.translate(0, 0.045, 0);
-    const dot = new THREE.SphereGeometry(0.012, 4, 4);
-    return { capGeo: cap, stemGeo: stem, dotGeo: dot };
-  }, []);
-
-  const capMats = useMemo(() => [
-    new THREE.MeshLambertMaterial({ color: '#c04040' }),
-    new THREE.MeshLambertMaterial({ color: '#b86830' }),
-    new THREE.MeshLambertMaterial({ color: '#d4a838' }),
-  ], []);
-  const stemMat = useMemo(() => new THREE.MeshLambertMaterial({ color: '#f0ead8' }), []);
-  const dotMat = useMemo(() => new THREE.MeshLambertMaterial({ color: '#f5f0e8' }), []);
+  const { capG, stemG, dotG } = useMemo(() => ({
+    capG: new THREE.SphereGeometry(0.06, 10, 8, 0, Math.PI*2, 0, Math.PI*0.55),
+    stemG: (() => { const g = new THREE.CylinderGeometry(0.014,0.02,0.07,6); g.translate(0,0.035,0); return g; })(),
+    dotG: new THREE.SphereGeometry(0.008, 4, 4),
+  }), []);
+  const capMs = useMemo(() => [new THREE.MeshLambertMaterial({color:'#b83838'}), new THREE.MeshLambertMaterial({color:'#a86028'}), new THREE.MeshLambertMaterial({color:'#c89830'})], []);
+  const stemM = useMemo(() => new THREE.MeshLambertMaterial({color:'#ede8d6'}), []);
+  const dotM = useMemo(() => new THREE.MeshLambertMaterial({color:'#f5f0e8'}), []);
 
   useEffect(() => {
-    if (!groupRef.current) return;
-
-    const pool: MushroomState[] = [];
-    for (let i = 0; i < cfg.mushroomMaxCount; i++) {
-      const halfW = cfg.grassLayers[0].fieldWidth * 0.35;
-      const pos = new THREE.Vector3(
-        (Math.random() - 0.5) * halfW * 2,
-        cfg.grassLayers[0].yOffset,
-        -Math.random() * 2.5 - 0.3
-      );
-
-      const colorIdx = Math.floor(Math.random() * 3);
-      pool.push({
-        position: pos,
-        phase: 'dormant',
-        timer: Math.random() * cfg.mushroomSpawnInterval,
-        maxScale: 0.5 + Math.random() * 0.5,
-        currentScale: 0,
-        colorIdx,
-      });
-
-      const mGroup = new THREE.Group();
-      mGroup.position.copy(pos);
-      mGroup.scale.setScalar(0);
-
-      // Stem
-      const stemMesh = new THREE.Mesh(stemGeo, stemMat);
-      mGroup.add(stemMesh);
-
-      // Cap
-      const capMesh = new THREE.Mesh(capGeo, capMats[colorIdx]);
-      capMesh.position.y = 0.09;
-      mGroup.add(capMesh);
-
-      // White dots on cap
-      for (let d = 0; d < 5; d++) {
-        const theta = (d / 5) * Math.PI * 2 + Math.random() * 0.5;
-        const phi = 0.2 + Math.random() * 0.3;
-        const r = 0.065;
-        const dotMesh = new THREE.Mesh(dotGeo, dotMat);
-        dotMesh.position.set(
-          Math.sin(theta) * Math.sin(phi) * r,
-          0.09 + Math.cos(phi) * r * 0.7,
-          Math.cos(theta) * Math.sin(phi) * r
-        );
-        dotMesh.scale.setScalar(0.5 + Math.random() * 0.5);
-        mGroup.add(dotMesh);
+    if (!grp.current) return;
+    const pool: MushState[] = [];
+    for (let i = 0; i < cfg.mushroom.count; i++) {
+      const p = new THREE.Vector3((Math.random()-.5)*14, 0, -Math.random()*2);
+      const ci = Math.floor(Math.random()*3);
+      pool.push({ pos: p, phase: 'dormant', timer: Math.random()*cfg.mushroom.spawnInterval, maxS: 0.4+Math.random()*0.4, curS: 0, ci });
+      const mg = new THREE.Group(); mg.position.copy(p); mg.scale.setScalar(0);
+      mg.add(new THREE.Mesh(stemG, stemM));
+      const cap = new THREE.Mesh(capG, capMs[ci]); cap.position.y = 0.07; mg.add(cap);
+      for (let d = 0; d < 4; d++) {
+        const th = (d/4)*Math.PI*2+Math.random()*0.4, ph = 0.2+Math.random()*0.25, r = 0.05;
+        const dot = new THREE.Mesh(dotG, dotM);
+        dot.position.set(Math.sin(th)*Math.sin(ph)*r, 0.07+Math.cos(ph)*r*0.6, Math.cos(th)*Math.sin(ph)*r);
+        dot.scale.setScalar(0.4+Math.random()*0.6); mg.add(dot);
       }
-
-      groupRef.current.add(mGroup);
+      grp.current.add(mg);
     }
-
-    mushrooms.current = pool;
-  }, [capGeo, stemGeo, dotGeo, capMats, stemMat, dotMat, cfg]);
+    ms.current = pool;
+  }, [capG, stemG, dotG, capMs, stemM, dotM, cfg]);
 
   useFrame(({ clock }, delta) => {
-    if (!groupRef.current) return;
+    if (!grp.current) return;
     const dt = Math.min(delta, 0.05);
-
-    mushrooms.current.forEach((m, i) => {
-      const mGroup = groupRef.current!.children[i] as THREE.Group;
-      if (!mGroup) return;
-
+    ms.current.forEach((m, i) => {
+      const g = grp.current!.children[i] as THREE.Group; if (!g) return;
       m.timer += dt;
-
       switch (m.phase) {
         case 'dormant':
-          if (m.timer >= cfg.mushroomSpawnInterval) {
-            m.phase = 'growing';
-            m.timer = 0;
-            m.position.x = (Math.random() - 0.5) * cfg.grassLayers[0].fieldWidth * 0.7;
-            m.position.z = -Math.random() * 2.5 - 0.3;
-            mGroup.position.copy(m.position);
-          }
-          break;
-
-        case 'growing': {
-          const t = Math.min(m.timer / cfg.mushroomGrowDuration, 1);
-          // Elastic ease out for charming pop
-          const elastic = 1 - Math.pow(1 - t, 3) * Math.cos(t * Math.PI * 1.5) * (1 - t);
-          m.currentScale = Math.max(0, elastic * m.maxScale);
-          mGroup.scale.setScalar(m.currentScale);
-          if (t >= 1) { m.phase = 'visible'; m.timer = 0; }
-          break;
-        }
-
-        case 'visible':
-          // Gentle sway
-          mGroup.rotation.z = Math.sin(clock.elapsedTime * 0.8 + i * 2.5) * 0.03;
-          if (m.timer >= cfg.mushroomVisibleDuration) { m.phase = 'shrinking'; m.timer = 0; }
-          break;
-
-        case 'shrinking': {
-          const t = Math.min(m.timer / cfg.mushroomShrinkDuration, 1);
-          // Smooth sink
-          const ease = 1 - t * t;
-          m.currentScale = ease * m.maxScale;
-          mGroup.scale.setScalar(Math.max(0, m.currentScale));
-          mGroup.position.y = m.position.y - t * 0.06;
-          if (t >= 1) {
-            m.phase = 'dormant';
-            m.timer = Math.random() * cfg.mushroomSpawnInterval * 0.5;
-            mGroup.scale.setScalar(0);
-            mGroup.position.y = m.position.y;
-          }
-          break;
-        }
+          if (m.timer >= cfg.mushroom.spawnInterval) { m.phase='growing'; m.timer=0; m.pos.x=(Math.random()-.5)*14; m.pos.z=-Math.random()*2; g.position.copy(m.pos); } break;
+        case 'growing': { const t=Math.min(m.timer/cfg.mushroom.growDur,1); m.curS=(1-Math.pow(1-t,3))*m.maxS; g.scale.setScalar(m.curS); if(t>=1){m.phase='visible';m.timer=0;} break; }
+        case 'visible': g.rotation.z=Math.sin(clock.elapsedTime*0.7+i*2)*0.025; if(m.timer>=cfg.mushroom.visibleDur){m.phase='shrinking';m.timer=0;} break;
+        case 'shrinking': { const t=Math.min(m.timer/cfg.mushroom.shrinkDur,1); m.curS=(1-t*t)*m.maxS; g.scale.setScalar(Math.max(0,m.curS)); g.position.y=m.pos.y-t*0.04; if(t>=1){m.phase='dormant';m.timer=Math.random()*cfg.mushroom.spawnInterval*0.5;g.scale.setScalar(0);g.position.y=m.pos.y;} break; }
       }
     });
   });
-
-  return <group ref={groupRef} />;
+  return <group ref={grp} />;
 }
 
 /* ═══════════════════════════════════════════════════════
-   BUTTERFLY SYSTEM
+   BUTTERFLIES
    ═══════════════════════════════════════════════════════ */
-interface ButterflyState {
-  t: number;
-  pathSpeed: number;
-  pathPoints: THREE.Vector3[];
-  wingPhase: number;
-  size: number;
-}
-
-function ButterflySystem() {
-  const groupRef = useRef<THREE.Group>(null);
-  const butterflies = useRef<ButterflyState[]>([]);
+function Butterflies() {
+  const grp = useRef<THREE.Group>(null);
   const cfg = useMemo(() => getCfg(), []);
-
-  const wingGeo = useMemo(() => {
-    const shape = new THREE.Shape();
-    shape.moveTo(0, 0);
-    shape.bezierCurveTo(0.06, 0.08, 0.12, 0.18, 0.07, 0.28);
-    shape.bezierCurveTo(0.04, 0.22, 0.01, 0.15, 0, 0.08);
-    shape.bezierCurveTo(-0.01, 0.15, -0.04, 0.22, -0.07, 0.28);
-    shape.bezierCurveTo(-0.12, 0.18, -0.06, 0.08, 0, 0);
-    return new THREE.ShapeGeometry(shape, 4);
+  const sts = useRef<{t:number;spd:number;pts:THREE.Vector3[];wp:number;sz:number}[]>([]);
+  const wGeo = useMemo(() => {
+    const s = new THREE.Shape();
+    s.moveTo(0,0); s.bezierCurveTo(.05,.06,.1,.14,.06,.22); s.bezierCurveTo(.03,.17,.01,.12,0,.06);
+    s.bezierCurveTo(-.01,.12,-.03,.17,-.06,.22); s.bezierCurveTo(-.1,.14,-.05,.06,0,0);
+    return new THREE.ShapeGeometry(s, 3);
   }, []);
-
-  const butterflyColors = useMemo(() => [
-    new THREE.Color('#7abce0'),
-    new THREE.Color('#daa080'),
-    new THREE.Color('#c8a0d8'),
-  ], []);
-
-  const generatePath = useCallback((): THREE.Vector3[] => {
-    const halfW = cfg.grassLayers[0].fieldWidth * 0.3;
-    const yBase = cfg.grassLayers[0].yOffset;
-    const points: THREE.Vector3[] = [];
-    for (let i = 0; i < 6; i++) {
-      points.push(new THREE.Vector3(
-        (Math.random() - 0.5) * halfW * 2,
-        yBase + 0.5 + Math.random() * 1.2,
-        -Math.random() * 2.5 - 0.3
-      ));
-    }
-    return points;
-  }, [cfg]);
-
-  useEffect(() => {
-    if (!groupRef.current) return;
-
-    const states: ButterflyState[] = [];
-    for (let i = 0; i < cfg.butterflyCount; i++) {
-      const state: ButterflyState = {
-        t: Math.random(),
-        pathSpeed: cfg.butterflySpeed * (0.6 + Math.random() * 0.8),
-        pathPoints: generatePath(),
-        wingPhase: Math.random() * Math.PI * 2,
-        size: 0.5 + Math.random() * 0.4,
-      };
-      states.push(state);
-
-      const bGroup = new THREE.Group();
-
-      const wingMat = new THREE.MeshLambertMaterial({
-        color: butterflyColors[i % butterflyColors.length],
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.8,
-      });
-
-      const leftWing = new THREE.Mesh(wingGeo, wingMat);
-      leftWing.rotation.z = 0.2;
-      leftWing.position.x = 0.005;
-      bGroup.add(leftWing);
-
-      const rightWing = new THREE.Mesh(wingGeo, wingMat.clone());
-      rightWing.scale.x = -1;
-      rightWing.rotation.z = -0.2;
-      rightWing.position.x = -0.005;
-      bGroup.add(rightWing);
-
-      // Tiny body
-      const body = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.005, 0.003, 0.06, 4),
-        new THREE.MeshLambertMaterial({ color: '#333' })
-      );
-      body.rotation.x = Math.PI / 2;
-      body.position.y = 0.12;
-      bGroup.add(body);
-
-      bGroup.scale.setScalar(state.size);
-      groupRef.current.add(bGroup);
-    }
-
-    butterflies.current = states;
-  }, [wingGeo, generatePath, butterflyColors, cfg]);
-
-  const catmullRom = useCallback((points: THREE.Vector3[], t: number): THREE.Vector3 => {
-    const n = points.length;
-    const scaledT = t * (n - 1);
-    const i = Math.floor(scaledT);
-    const frac = scaledT - i;
-
-    const p0 = points[Math.max(i - 1, 0)];
-    const p1 = points[Math.min(i, n - 1)];
-    const p2 = points[Math.min(i + 1, n - 1)];
-    const p3 = points[Math.min(i + 2, n - 1)];
-
-    const t2 = frac * frac;
-    const t3 = t2 * frac;
-
+  const cols = useMemo(() => [new THREE.Color('#7abce0'),new THREE.Color('#daa080'),new THREE.Color('#c8a0d8')], []);
+  const genPath = useCallback((): THREE.Vector3[] => {
+    const pts: THREE.Vector3[] = [];
+    for (let i = 0; i < 6; i++) pts.push(new THREE.Vector3((Math.random()-.5)*16, 0.3+Math.random()*0.9, -Math.random()*2));
+    return pts;
+  }, []);
+  const crSpline = useCallback((pts: THREE.Vector3[], t: number): THREE.Vector3 => {
+    const n=pts.length,st=t*(n-1),i=Math.floor(st),f=st-i;
+    const p0=pts[Math.max(i-1,0)],p1=pts[Math.min(i,n-1)],p2=pts[Math.min(i+1,n-1)],p3=pts[Math.min(i+2,n-1)];
+    const f2=f*f,f3=f2*f;
     return new THREE.Vector3(
-      0.5 * (2*p1.x + (-p0.x+p2.x)*frac + (2*p0.x-5*p1.x+4*p2.x-p3.x)*t2 + (-p0.x+3*p1.x-3*p2.x+p3.x)*t3),
-      0.5 * (2*p1.y + (-p0.y+p2.y)*frac + (2*p0.y-5*p1.y+4*p2.y-p3.y)*t2 + (-p0.y+3*p1.y-3*p2.y+p3.y)*t3),
-      0.5 * (2*p1.z + (-p0.z+p2.z)*frac + (2*p0.z-5*p1.z+4*p2.z-p3.z)*t2 + (-p0.z+3*p1.z-3*p2.z+p3.z)*t3)
+      .5*(2*p1.x+(-p0.x+p2.x)*f+(2*p0.x-5*p1.x+4*p2.x-p3.x)*f2+(-p0.x+3*p1.x-3*p2.x+p3.x)*f3),
+      .5*(2*p1.y+(-p0.y+p2.y)*f+(2*p0.y-5*p1.y+4*p2.y-p3.y)*f2+(-p0.y+3*p1.y-3*p2.y+p3.y)*f3),
+      .5*(2*p1.z+(-p0.z+p2.z)*f+(2*p0.z-5*p1.z+4*p2.z-p3.z)*f2+(-p0.z+3*p1.z-3*p2.z+p3.z)*f3)
     );
   }, []);
 
+  useEffect(() => {
+    if (!grp.current) return;
+    const st: typeof sts.current = [];
+    for (let i = 0; i < cfg.butterfly.count; i++) {
+      const s = {t:Math.random(),spd:cfg.butterfly.speed*(0.5+Math.random()*1),pts:genPath(),wp:Math.random()*Math.PI*2,sz:0.4+Math.random()*0.3};
+      st.push(s);
+      const bg = new THREE.Group();
+      const wm = new THREE.MeshLambertMaterial({color:cols[i%3],side:THREE.DoubleSide,transparent:true,opacity:0.75});
+      const lw = new THREE.Mesh(wGeo,wm); lw.rotation.z=0.2; lw.position.x=0.004; bg.add(lw);
+      const rw = new THREE.Mesh(wGeo,wm.clone()); rw.scale.x=-1; rw.rotation.z=-0.2; rw.position.x=-0.004; bg.add(rw);
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.004,0.003,0.04,4),new THREE.MeshLambertMaterial({color:'#333'}));
+      body.rotation.x=Math.PI/2; body.position.y=0.1; bg.add(body);
+      bg.scale.setScalar(s.sz); grp.current.add(bg);
+    }
+    sts.current = st;
+  }, [wGeo,genPath,cols,cfg]);
+
   useFrame(({ clock }, delta) => {
-    if (!groupRef.current) return;
+    if (!grp.current) return;
     const dt = Math.min(delta, 0.05);
-
-    butterflies.current.forEach((b, i) => {
-      const bGroup = groupRef.current!.children[i] as THREE.Group;
-      if (!bGroup) return;
-
-      b.t += b.pathSpeed * dt * 0.04;
-      if (b.t >= 1) {
-        b.t = 0;
-        b.pathPoints = generatePath();
-      }
-
-      const pos = catmullRom(b.pathPoints, b.t);
-      pos.y += Math.sin(clock.elapsedTime * 1.2 + b.wingPhase) * 0.06;
-      bGroup.position.copy(pos);
-      butterflyPositions[i].copy(pos);
-
-      // Wing flapping
-      const flapAngle = Math.sin(clock.elapsedTime * cfg.butterflyWingFlapSpeed + b.wingPhase) * 0.6;
-      if (bGroup.children[0]) (bGroup.children[0] as THREE.Mesh).rotation.z = 0.2 + flapAngle;
-      if (bGroup.children[1]) (bGroup.children[1] as THREE.Mesh).rotation.z = -0.2 - flapAngle;
-
-      // Face movement direction
-      if (b.t + 0.01 < 1) {
-        const nextPos = catmullRom(b.pathPoints, Math.min(b.t + 0.01, 0.999));
-        const dir = nextPos.sub(pos).normalize();
-        if (dir.length() > 0.001) {
-          bGroup.rotation.y = Math.atan2(dir.x, dir.z);
-        }
-      }
+    sts.current.forEach((b, i) => {
+      const bg = grp.current!.children[i] as THREE.Group; if (!bg) return;
+      b.t += b.spd*dt*0.035; if (b.t>=1){b.t=0;b.pts=genPath();}
+      const pos = crSpline(b.pts,b.t); pos.y += Math.sin(clock.elapsedTime*1.1+b.wp)*0.05;
+      bg.position.copy(pos); bflyPos[i].copy(pos);
+      const flap = Math.sin(clock.elapsedTime*cfg.butterfly.flapSpeed+b.wp)*0.55;
+      if(bg.children[0])(bg.children[0] as THREE.Mesh).rotation.z=0.2+flap;
+      if(bg.children[1])(bg.children[1] as THREE.Mesh).rotation.z=-0.2-flap;
+      if(b.t+0.01<1){ const np=crSpline(b.pts,Math.min(b.t+0.01,0.999)); const dir=np.sub(pos).normalize(); if(dir.length()>0.001)bg.rotation.y=Math.atan2(dir.x,dir.z); }
     });
   });
-
-  return <group ref={groupRef} />;
+  return <group ref={grp} />;
 }
 
 /* ═══════════════════════════════════════════════════════
-   POLLEN PARTICLES
+   POLLEN
    ═══════════════════════════════════════════════════════ */
-function PollenParticles() {
-  const pointsRef = useRef<THREE.Points>(null);
+function Pollen() {
+  const ref = useRef<THREE.Points>(null);
   const cfg = useMemo(() => getCfg(), []);
-
   const { positions, velocities } = useMemo(() => {
-    const pos = new Float32Array(cfg.particleCount * 3);
-    const vel = new Float32Array(cfg.particleCount * 3);
-
-    for (let i = 0; i < cfg.particleCount; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * cfg.particleSpread.x;
-      pos[i * 3 + 1] = cfg.grassLayers[0].yOffset + Math.random() * cfg.particleSpread.y + 0.1;
-      pos[i * 3 + 2] = (Math.random() - 0.5) * cfg.particleSpread.z - 1;
-
-      vel[i * 3] = (Math.random() - 0.5) * cfg.particleSpeed;
-      vel[i * 3 + 1] = (Math.random() - 0.3) * cfg.particleSpeed * 0.3;
-      vel[i * 3 + 2] = (Math.random() - 0.5) * cfg.particleSpeed * 0.2;
+    const p = new Float32Array(cfg.pollen.count*3), v = new Float32Array(cfg.pollen.count*3);
+    for (let i = 0; i < cfg.pollen.count; i++) {
+      p[i*3]=(Math.random()-.5)*cfg.pollen.spread.x; p[i*3+1]=Math.random()*cfg.pollen.spread.y+0.1; p[i*3+2]=(Math.random()-.5)*cfg.pollen.spread.z;
+      v[i*3]=(Math.random()-.5)*cfg.pollen.speed; v[i*3+1]=(Math.random()-.3)*cfg.pollen.speed*0.25; v[i*3+2]=(Math.random()-.5)*cfg.pollen.speed*0.15;
     }
-
-    return { positions: pos, velocities: vel };
+    return { positions: p, velocities: v };
   }, [cfg]);
-
   useFrame(({ clock }) => {
-    if (!pointsRef.current) return;
-    const arr = pointsRef.current.geometry.attributes.position.array as Float32Array;
-    const t = clock.elapsedTime;
-
-    for (let i = 0; i < cfg.particleCount; i++) {
-      const idx = i * 3;
-      arr[idx] += velocities[idx] * 0.016;
-      arr[idx + 1] += Math.sin(t * 0.2 + i * 0.5) * 0.0003;
-      arr[idx + 2] += velocities[idx + 2] * 0.016;
-
-      const halfX = cfg.particleSpread.x * 0.5;
-      if (arr[idx] > halfX) arr[idx] = -halfX;
-      if (arr[idx] < -halfX) arr[idx] = halfX;
-
-      const yBase = cfg.grassLayers[0].yOffset;
-      if (arr[idx + 1] > yBase + cfg.particleSpread.y + 0.5) arr[idx + 1] = yBase + 0.1;
-      if (arr[idx + 1] < yBase) arr[idx + 1] = yBase + cfg.particleSpread.y;
+    if (!ref.current) return;
+    const a = ref.current.geometry.attributes.position.array as Float32Array, t = clock.elapsedTime;
+    for (let i = 0; i < cfg.pollen.count; i++) {
+      const x=i*3; a[x]+=velocities[x]*0.016; a[x+1]+=Math.sin(t*0.15+i*0.4)*0.0002; a[x+2]+=velocities[x+2]*0.016;
+      const hx=cfg.pollen.spread.x*0.5;
+      if(a[x]>hx)a[x]=-hx; if(a[x]<-hx)a[x]=hx;
+      if(a[x+1]>cfg.pollen.spread.y+0.3)a[x+1]=0.1; if(a[x+1]<0)a[x+1]=cfg.pollen.spread.y;
     }
-
-    pointsRef.current.geometry.attributes.position.needsUpdate = true;
+    ref.current.geometry.attributes.position.needsUpdate = true;
   });
-
   return (
-    <points ref={pointsRef}>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          array={positions}
-          count={cfg.particleCount}
-          itemSize={3}
-        />
-      </bufferGeometry>
-      <pointsMaterial
-        size={0.018}
-        color="#fffce0"
-        transparent
-        opacity={0.45}
-        sizeAttenuation
-        depthWrite={false}
-      />
+    <points ref={ref}>
+      <bufferGeometry><bufferAttribute attach="attributes-position" array={positions} count={cfg.pollen.count} itemSize={3} /></bufferGeometry>
+      <pointsMaterial size={0.015} color="#fffce0" transparent opacity={0.4} sizeAttenuation depthWrite={false} />
     </points>
   );
 }
 
 /* ═══════════════════════════════════════════════════════
-   GROUND PLANE
+   GROUND — dark green, grass grows from y=0
    ═══════════════════════════════════════════════════════ */
 function Ground() {
-  const cfg = useMemo(() => getCfg(), []);
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, cfg.grassLayers[0].yOffset - 0.02, -1]}>
-      <planeGeometry args={[40, 18]} />
-      <meshLambertMaterial color={cfg.groundColor} />
+    <mesh rotation={[-Math.PI/2, 0, 0]} position={[0, -0.01, -2]}>
+      <planeGeometry args={[50, 24]} />
+      <meshLambertMaterial color="#1e4e18" />
     </mesh>
   );
 }
 
 /* ═══════════════════════════════════════════════════════
-   CAMERA
+   CAMERA — looking slightly down at the meadow
    ═══════════════════════════════════════════════════════ */
-function SceneSetup() {
+function Cam() {
   const { camera } = useThree();
-  useFrame(() => {
-    camera.position.set(0, 1.2, 5.5);
-    camera.lookAt(0, 0.0, -1);
-  });
+  useEffect(() => { camera.position.set(0, 2.0, 6); camera.lookAt(0, 0.2, 0); }, [camera]);
   return null;
 }
 
 /* ═══════════════════════════════════════════════════════
-   TRANSPARENT BACKGROUND
+   TRANSPARENT BACKGROUND — sky shows through
    ═══════════════════════════════════════════════════════ */
 function ClearBg() {
   const { gl, scene } = useThree();
-  scene.background = null;
-  gl.setClearColor(0x000000, 0);
+  useEffect(() => { scene.background = null; gl.setClearColor(0x000000, 0); }, [gl, scene]);
   return null;
 }
 
 /* ═══════════════════════════════════════════════════════
-   MAIN EXPORT
+   EXPORT
    ═══════════════════════════════════════════════════════ */
 export default function MeadowScene() {
   const cfg = useMemo(() => getCfg(), []);
-
   return (
     <Canvas
-      camera={{ position: [0, 1.2, 5.5], fov: 40 }}
-      gl={{
-        antialias: true,
-        alpha: true,
-        powerPreference: 'high-performance',
-      }}
+      camera={{ position: [0, 2, 6], fov: 45, near: 0.1, far: 50 }}
+      gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
       dpr={[1, 1.5]}
       style={{ background: 'transparent' }}
     >
       <Suspense fallback={null}>
         <ClearBg />
-
-        {/* Fog blends distant grass into soft haze */}
-        <fog attach="fog" args={[cfg.fogColor, cfg.fogNear, cfg.fogFar]} />
-
-        {/* Soft daylight lighting */}
-        <ambientLight intensity={0.6} color="#d0e8c8" />
-        <directionalLight position={[4, 8, 3]} intensity={1.0} color="#fff8e0" />
-        <directionalLight position={[-3, 4, -2]} intensity={0.3} color="#90c890" />
-        <hemisphereLight args={['#b8d8f0', '#2a5c22', 0.4]} />
-
+        <fog attach="fog" args={[new THREE.Color('#2a6822'), 6, 18]} />
+        <ambientLight intensity={0.55} color="#d0e8c8" />
+        <directionalLight position={[4,8,3]} intensity={0.9} color="#fff8e0" />
+        <directionalLight position={[-3,5,-2]} intensity={0.25} color="#88c088" />
+        <hemisphereLight args={['#c0d8e8','#1e4e18',0.35]} />
         <Ground />
-
-        {cfg.grassLayers.map((layer, i) => (
-          <GrassLayer key={i} layerConfig={layer} />
-        ))}
-
-        <WindGustController />
-        <MushroomSystem />
-        <ButterflySystem />
-        <PollenParticles />
-        <SceneSetup />
+        <GrassLayer count={cfg.grass.foreCount} fieldW={30} depthMin={-2} depthMax={4} hMin={0.15} hMax={0.45} bladeW={0.012} colorBase="#2e6b28" colorMid="#4a8e3e" colorTip="#8cc46a" colorDark="#1a3e16" windMul={1.0} />
+        <GrassLayer count={cfg.grass.midCount} fieldW={34} depthMin={-6} depthMax={-2} hMin={0.1} hMax={0.3} bladeW={0.01} colorBase="#3a7832" colorMid="#5c9e4c" colorTip="#9aca78" colorDark="#234a1c" windMul={0.8} />
+        <GrassLayer count={cfg.grass.farCount} fieldW={38} depthMin={-12} depthMax={-6} hMin={0.06} hMax={0.2} bladeW={0.008} colorBase="#3a7030" colorMid="#5c9648" colorTip="#90b870" colorDark="#284e1e" windMul={0.55} />
+        <GustCtrl />
+        <Mushrooms />
+        <Butterflies />
+        <Pollen />
+        <Cam />
       </Suspense>
     </Canvas>
   );
